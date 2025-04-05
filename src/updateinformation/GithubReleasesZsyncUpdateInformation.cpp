@@ -17,7 +17,7 @@ namespace appimage::update::updateinformation {
         auto filename = _updateInformationComponents[4];
 
         std::stringstream url;
-        url << "https://api.github.com/repos/" << username << "/" << repository << "/releases/";
+        url << "https://api.gh.pkgforge.dev/repos/" << username << "/" << repository << "/releases/";
 
         if (tag.find("latest") != std::string::npos) {
             issueStatusMessage("Fetching latest release information from GitHub API");
