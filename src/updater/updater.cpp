@@ -76,7 +76,7 @@ namespace appimage::update {
             return [this](const std::string& message) {issueStatusMessage(message);};
         }
 
-        void validateAppImage() {
+        std::string validateAppImageAndGetZsyncUrl() {
             // first check whether there's update information at all
             // note that we skip this check when custom update information is set intentionally
             if (this->rawUpdateInformation.empty()) {
@@ -100,6 +100,8 @@ namespace appimage::update {
                 oss << "ZSync URL not available. See previous messages for details.";
                 throw AppImageError(oss.str());
             }
+
+            return zsyncUrl;
         }
 
         // thread runner
@@ -119,7 +121,7 @@ namespace appimage::update {
                     zSyncClient.reset();
                 }
 
-                validateAppImage();
+                const auto zsyncUrl = validateAppImageAndGetZsyncUrl();
                 const auto updateInformationPtr = makeUpdateInformation(rawUpdateInformation);
 
                 if (updateInformationPtr->type() == ZSYNC_GITHUB_RELEASES) {
@@ -131,8 +133,6 @@ namespace appimage::update {
                 } else {
                     throw AppImageError("Unknown update information type");
                 }
-
-                const auto zsyncUrl = updateInformationPtr->buildUrl(makeIssueStatusMessageCallback());
 
                 // doesn't matter which type it is exactly, they all work like the same
                 zSyncClient = std::make_shared<zsync2::ZSyncClient>(zsyncUrl, appImage.path(), overwrite);
@@ -189,17 +189,13 @@ namespace appimage::update {
 
             // validate AppImage
             try {
-                validateAppImage();
+                const auto zsyncUrl = validateAppImageAndGetZsyncUrl();
+
+                zSyncClient.reset(new zsync2::ZSyncClient(zsyncUrl, appImage.path()));
+                return zSyncClient->checkForChanges(updateAvailable, method);
             } catch (const AppImageError& e) {
                 issueStatusMessage(e.what());
                 return false;
-            }
-
-            try {
-                auto updateInformationPtr = makeUpdateInformation(rawUpdateInformation);
-                const auto zsyncUrl = updateInformationPtr->buildUrl(makeIssueStatusMessageCallback());
-                zSyncClient.reset(new zsync2::ZSyncClient(zsyncUrl, appImage.path()));
-                return zSyncClient->checkForChanges(updateAvailable, method);
             } catch (const UpdateInformationError& e) {
                 zSyncClient.reset();
 
