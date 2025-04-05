@@ -33,11 +33,22 @@ namespace appimage::update::updateinformation {
 
         nlohmann::json json;
 
+        // fallback to official Github API in case of failure
+        if (response.error.code != cpr::ErrorCode::OK || response.status_code < 200 || response.status_code >= 300) {
+            std::string fallbackUrl = url.str();
+            size_t pos = fallbackUrl.find("api.gh.pkgforge.dev");
+            if (pos != std::string::npos) {
+                fallbackUrl.replace(pos, 19, "api.github.com");
+            }
+            response = cpr::Get(cpr::Url{fallbackUrl});
+        }
+
         try {
             json = nlohmann::json::parse(response.text);
         } catch (const std::exception& e) {
             throw UpdateInformationError(std::string("Failed to parse GitHub response: ") + e.what());
         }
+
         // continue only if request worked
         if (response.error.code != cpr::ErrorCode::OK || response.status_code < 200 || response.status_code >= 300) {
             std::ostringstream oss;
