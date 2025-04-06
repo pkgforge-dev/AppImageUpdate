@@ -3,6 +3,11 @@
 set -ex
 
 export APPIMAGE_EXTRACT_AND_RUN=1
+export ARCH=${ARCH:-"$(uname -m)"}
+
+LIB4BN="https://raw.githubusercontent.com/VHSgunzo/sharun/refs/heads/main/lib4bin"
+APPIMAGETOOL="https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-$ARCH.AppImage"
+UPINFO="gh-releases-zsync|pkgforge-dev|AppImageUpdate|latest|*$ARCH.AppImage.zsync"
 
 # use RAM disk if possible
 TEMP_BASE=/tmp
@@ -22,9 +27,6 @@ REPO_ROOT="$(readlink -f "$(dirname "$(dirname "$0")")")"
 OLD_CWD="$(readlink -f .)"
 
 cd "$BUILD_DIR"
-
-export ARCH=${ARCH:-"$(uname -m)"}
-
 cmake "$REPO_ROOT" \
     -DBUILD_QT_UI=OFF \
     -DCMAKE_INSTALL_PREFIX=/usr \
@@ -58,7 +60,6 @@ rm appimageupdatetool.AppDir/usr/lib/*/libappimageupdate-qt*.so* || true
 rm -rf appimageupdatetool.AppDir/usr/include || true
 find appimageupdatetool.AppDir -type f -iname '*.a' -delete
 
-
 # get linuxdeploy and its qt plugin
 wget https://github.com/TheAssassin/linuxdeploy/releases/download/continuous/linuxdeploy-"$CMAKE_ARCH".AppImage
 wget https://github.com/darealshinji/linuxdeploy-plugin-checkrt/releases/download/continuous/linuxdeploy-plugin-checkrt.sh
@@ -66,12 +67,23 @@ chmod +x linuxdeploy*.AppImage linuxdeploy-plugin-checkrt.sh
 
 
 find appimageupdatetool.AppDir/
-export UPD_INFO="gh-releases-zsync|pkgforge-dev|AppImageUpdate|latest|*$ARCH.AppImage.zsync"
 export OUTPUT="appimageupdatetool"-"$ARCH".AppImage
 
 # bundle application
-./linuxdeploy-"$CMAKE_ARCH".AppImage --appdir "appimageupdatetool".AppDir --output appimage \
+./linuxdeploy-"$CMAKE_ARCH".AppImage --appdir "appimageupdatetool".AppDir \
 	-d "$REPO_ROOT"/resources/"appimageupdatetool".desktop -i "$REPO_ROOT"/resources/appimage.png --plugin checkrt
+
+# Make appimage with uruntime
+wget -q "$URUNTIME" -O ./uruntime
+chmod +x ./uruntime
+
+#Add udpate info to runtime
+echo "Adding update information \"$UPINFO\" to runtime..."
+./uruntime --appimage-addupdinfo "$UPINFO"
+
+echo "Generating AppImage..."
+./appimagetool --comp zstd -n -u "$UPINFO" \
+	"$PWD"/AppDir "$PWD"/appimageupdatetool-"$ARCH".AppImage
 
 # move AppImage to old cwd
 mv appimageupdatetool*.AppImage* "$OLD_CWD"/
