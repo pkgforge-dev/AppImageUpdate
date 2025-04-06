@@ -92,7 +92,7 @@ patch_appimage linuxdeploy*.AppImage
 for app in appimageupdatetool AppImageUpdate validate; do
     find "$app".AppDir/
 
-    export UPD_INFO="gh-releases-zsync|AppImage|AppImageUpdate|continuous|$app-*$ARCH.AppImage.zsync"
+    export UPD_INFO="gh-releases-zsync|pkgforge-dev|AppImageUpdate|continuous|$app-*$ARCH.AppImage.zsync"
 
     # note that we need to overwrite this in every iteration, otherwise the value will leak into the following iterationso
     extra_flags=()
