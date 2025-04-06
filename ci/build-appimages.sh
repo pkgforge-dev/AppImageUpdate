@@ -70,16 +70,19 @@ find appimageupdatetool.AppDir/
 export OUTPUT="appimageupdatetool"-"$ARCH".AppImage
 
 # bundle application
+#wget "$LIB4BN" -O ./lib4bin
+#cd "appimageupdatetool".AppDir && (
+#	./lib4bin -p -v -k -s
+
+#)
+
+
 ./linuxdeploy-"$CMAKE_ARCH".AppImage --appdir "appimageupdatetool".AppDir \
 	-d "$REPO_ROOT"/resources/"appimageupdatetool".desktop -i "$REPO_ROOT"/resources/appimage.png --plugin checkrt
 
 # Make appimage with uruntime
 wget "$APPIMAGETOOL" -O ./appimagetool
 chmod +x ./appimagetool
-
-#Add udpate info to runtime
-echo "Adding update information \"$UPINFO\" to runtime..."
-./uruntime --appimage-addupdinfo "$UPINFO"
 
 echo "Generating AppImage..."
 ./appimagetool --comp zstd -n -u "$UPINFO" \
