@@ -40,6 +40,7 @@ jobs:
       - name: Set version file
         if: ${{ matrix.optimized == false }}
         run: |
+          echo "$GITHUB_SHA"
           echo "$GITHUB_SHA" | cut -c 1-9 > ~/version
           echo "APP_VERSION=$(cat ~/version)" >> "${GITHUB_ENV}"
 
@@ -56,11 +57,14 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+
     steps:
       - name: Download artifacts
         uses: actions/download-artifact@v4
+
       - name: Inspect directory after downloading artifacts
         run: ls -alFR
+
       - name: Create release and upload artifacts
         uses: softprops/action-gh-release@v2
         with:
