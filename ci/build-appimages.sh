@@ -115,7 +115,7 @@ elif [ -f "$CURRENTDIR/bin/$1" ]; then
 else
 	exec "$CURRENTDIR/bin/appimageupdatetool" "$@"
 fi' > ./AppDir/AppRun
-chmod +x ./AppRun
+chmod +x ./AppDir/AppRun
 
 # Make appimage with uruntime
 wget "$APPIMAGETOOL" -O ./appimagetool
