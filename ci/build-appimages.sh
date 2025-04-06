@@ -44,7 +44,7 @@ done
 # appimagetool uses this for naming the file
 VERSION="$(cd "$REPO_ROOT" && git rev-parse --short HEAD)"
 export VERSION
-echo "$VERSION" ~/version
+echo "$VERSION" > ~/version
 
 # prepend GitHub run number if possible
 if [ "$GITHUB_RUN_NUMBER" != "" ]; then
