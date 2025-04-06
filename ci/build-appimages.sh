@@ -29,10 +29,6 @@ pushd "$BUILD_DIR"
 
 export ARCH=${ARCH:-"$(uname -m)"}
 
-if [ "$ARCH" == "i386" ] && [ "$DOCKER" == "" ]; then
-    EXTRA_CMAKE_ARGS=("-DCMAKE_TOOLCHAIN_FILE=$REPO_ROOT/cmake/toolchains/i386-linux-gnu.cmake")
-fi
-
 cmake "$REPO_ROOT" \
     -DBUILD_QT_UI=ON \
     -DCMAKE_INSTALL_PREFIX=/usr \
@@ -43,7 +39,7 @@ cmake "$REPO_ROOT" \
 make -j"$(nproc)"
 
 # set up the AppDirs initially
-for appdir in {appimageupdatetool,AppImageUpdate,validate}.AppDir; do
+for appdir in {appimageupdatetool,validate}.AppDir; do
     make install DESTDIR="$appdir"
     mkdir -p "$appdir"/resources
     cp -v "$REPO_ROOT"/resources/*.xpm "$appdir"/resources/
@@ -61,8 +57,6 @@ fi
 
 
 # remove unnecessary binaries from AppDirs
-rm AppImageUpdate.AppDir/usr/bin/appimageupdatetool
-rm AppImageUpdate.AppDir/usr/bin/validate
 rm appimageupdatetool.AppDir/usr/bin/AppImageUpdate
 rm appimageupdatetool.AppDir/usr/bin/validate
 rm appimageupdatetool.AppDir/usr/lib/*/libappimageupdate-qt*.so*
@@ -71,8 +65,8 @@ rm validate.AppDir/usr/lib/*/libappimageupdate*.so*
 
 
 # remove other unnecessary data
-find {appimageupdatetool,AppImageUpdate,validate}.AppDir -type f -iname '*.a' -delete
-rm -rf {appimageupdatetool,AppImageUpdate}.AppDir/usr/include
+find {appimageupdatetool,validate}.AppDir -type f -iname '*.a' -delete
+rm -rf appimageupdatetool.AppDir/usr/include
 
 
 # get linuxdeploy and its qt plugin
@@ -89,26 +83,20 @@ patch_appimage() {
 }
 patch_appimage linuxdeploy*.AppImage
 
-for app in appimageupdatetool AppImageUpdate validate; do
+for app in appimageupdatetool validate; do
     find "$app".AppDir/
 
     export UPD_INFO="gh-releases-zsync|pkgforge-dev|AppImageUpdate|continuous|$app-*$ARCH.AppImage.zsync"
-
-    # note that we need to overwrite this in every iteration, otherwise the value will leak into the following iterationso
-    extra_flags=()
-    if [ "$app" == "AppImageUpdate" ]; then
-        extra_flags=("--plugin" "qt");
-    fi
 
     # overwrite AppImage filename to get static filenames
     # see https://github.com/AppImage/AppImageUpdate/issues/89
     export OUTPUT="$app"-"$ARCH".AppImage
 
     # bundle application
-    ./linuxdeploy-"$CMAKE_ARCH".AppImage --appdir "$app".AppDir --output appimage "${extra_flags[@]}" -d "$REPO_ROOT"/resources/"$app".desktop -i "$REPO_ROOT"/resources/appimage.png --plugin checkrt
+    ./linuxdeploy-"$CMAKE_ARCH".AppImage --appdir "$app".AppDir --output appimage -d "$REPO_ROOT"/resources/"$app".desktop -i "$REPO_ROOT"/resources/appimage.png --plugin checkrt
 done
 
 # move AppImages to old cwd
-mv {appimageupdatetool,AppImageUpdate,validate}*.AppImage* "$OLD_CWD"/
+mv {appimageupdatetool,validate}*.AppImage* "$OLD_CWD"/
 
 popd
