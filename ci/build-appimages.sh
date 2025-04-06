@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 set -ex
 
@@ -86,4 +86,4 @@ done
 mv appimageupdatetool*.AppImage* "$OLD_CWD"/
 mv validate*.AppImage* "$OLD_CWD"/
 
-popd
+cd -
