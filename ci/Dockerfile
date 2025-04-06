@@ -17,7 +17,7 @@ RUN apt-get update && \
         build-essential libssl-dev autoconf automake libtool \
         wget vim-common desktop-file-utils pkgconf libgpgme-dev \
         libglib2.0-dev libcairo2-dev librsvg2-dev libfuse-dev git libcurl4-openssl-dev argagg-dev libgcrypt20-dev libboost-dev \
-        liblzma-dev libzstd-dev zlib1g-dev libarchive-dev
+        liblzma-dev libzstd-dev zlib1g-dev libarchive-dev patchelf strace
 
 RUN wget -qO- https://artifacts.assassinate-you.net/prebuilt-cmake/cmake-v3.28.0-debian-bullseye-"${CMAKE_ARCH}".tar.gz | \
     tar xzv -C/usr --strip-components=1
