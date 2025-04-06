@@ -53,7 +53,6 @@ if [ "$GITHUB_RUN_NUMBER" != "" ]; then
 	export VERSION="$GITHUB_RUN_NUMBER-$VERSION"
 fi
 
-
 # remove unnecessary files from AppDirs
 rm appimageupdatetool.AppDir/usr/bin/AppImageUpdate || true
 rm appimageupdatetool.AppDir/usr/lib/*/libappimageupdate-qt*.so* || true
@@ -76,6 +75,17 @@ wget "$LIB4BN" -O ./AppDir/lib4bin && (
 	./lib4bin -p -v -k -s ./shared/bin/*
 	ln ./sharun ./AppRun
 	./sharun -g
+
+	# We need a newer version of glibc since the current one doesn't support --argv0
+	if [ "$ARCH" = x86_64 ]; then
+		wget http://http.us.debian.org/debian/pool/main/g/glibc/libc6_2.41-6_amd64.deb
+	else
+		wget http://http.us.debian.org/debian/pool/main/g/glibc/libc6_2.41-6_arm64.deb
+	fi
+	ar x *.deb
+	tar fx data.tar.xz
+	cp -vr ./usr/lib/*/* ./shared/lib
+	rm -rf ./usr *.tar.* *.deb
 )
 
 # Make appimage with uruntime
