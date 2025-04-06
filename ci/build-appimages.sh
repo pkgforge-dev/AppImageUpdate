@@ -74,8 +74,8 @@ export OUTPUT="appimageupdatetool"-"$ARCH".AppImage
 	-d "$REPO_ROOT"/resources/"appimageupdatetool".desktop -i "$REPO_ROOT"/resources/appimage.png --plugin checkrt
 
 # Make appimage with uruntime
-wget -q "$URUNTIME" -O ./uruntime
-chmod +x ./uruntime
+wget "$APPIMAGETOOL" -O ./appimagetool
+chmod +x ./appimagetool
 
 #Add udpate info to runtime
 echo "Adding update information \"$UPINFO\" to runtime..."
