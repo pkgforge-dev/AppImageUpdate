@@ -4,6 +4,8 @@ set -x
 set -e
 set -o pipefail
 
+export APPIMAGE_EXTRACT_AND_RUN=1
+
 # use RAM disk if possible
 if [ "$CI" == "" ] && [ -d /dev/shm ]; then
     TEMP_BASE=/dev/shm
@@ -74,14 +76,6 @@ wget https://github.com/TheAssassin/linuxdeploy/releases/download/continuous/lin
 wget https://github.com/TheAssassin/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-"$CMAKE_ARCH".AppImage
 wget https://github.com/darealshinji/linuxdeploy-plugin-checkrt/releases/download/continuous/linuxdeploy-plugin-checkrt.sh
 chmod +x linuxdeploy*.AppImage linuxdeploy-plugin-checkrt.sh
-
-patch_appimage() {
-    while [[ "$1" != "" ]]; do
-        dd if=/dev/zero of="$1" conv=notrunc bs=1 count=3 seek=8
-        shift
-    done
-}
-patch_appimage linuxdeploy*.AppImage
 
 for app in appimageupdatetool validate; do
     find "$app".AppDir/
