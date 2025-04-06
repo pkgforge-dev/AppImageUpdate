@@ -53,10 +53,10 @@ fi
 
 
 # remove unnecessary files from AppDirs
-rm appimageupdatetool.AppDir/usr/bin/AppImageUpdate
-rm appimageupdatetool.AppDir/usr/lib/*/libappimageupdate-qt*.so*
-find appimageupdatetool.AppDir -type f -iname '*.a' -delete
-rm -rf appimageupdatetool.AppDir/usr/include
+rm appimageupdatetool.AppDir/usr/bin/AppImageUpdate || true
+rm appimageupdatetool.AppDir/usr/lib/*/libappimageupdate-qt*.so* || true
+find appimageupdatetool.AppDir -type f -iname '*.a' -delete || true
+rm -rf appimageupdatetool.AppDir/usr/include || true
 
 
 # get linuxdeploy and its qt plugin
