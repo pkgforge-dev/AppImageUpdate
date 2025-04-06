@@ -67,8 +67,8 @@ jobs:
 
       - name: Read version
         run: |
-          cat version
-          export VERSION="$(<version)"
+          cat ./version/version
+          export VERSION="$(cat ./version/version)"
           echo "APP_VERSION=${VERSION}" >> "${GITHUB_ENV}"
 
         #Version Release
