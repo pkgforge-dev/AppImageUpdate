@@ -2,7 +2,7 @@
 # we use Debian because they still provide i386 builds
 # (also, they ship Qt 5.15.2, so we no longer have to rely on third-party builds)
 # and it provides a C++17 compatible compiler out of the box!
-FROM debian:bookworm
+FROM debian:bullseye
 
 ARG ARCH
 ARG DOCKER_ARCH
@@ -14,7 +14,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
     apt-get install -y qtbase5-dev qttools5-dev-tools qtwayland5-dev-tools qtwayland5-private-dev \
         libgl1 libdrm-dev mesa-common-dev \
-        build-essential libssl-dev libssl1.1 autoconf automake libtool \
+        build-essential libssl-dev autoconf automake libtool \
         wget vim-common desktop-file-utils pkgconf libgpgme-dev \
         libglib2.0-dev libcairo2-dev librsvg2-dev libfuse-dev git libcurl4-openssl-dev argagg-dev libgcrypt20-dev libboost-dev \
         liblzma-dev libzstd-dev zlib1g-dev libarchive-dev patchelf strace
