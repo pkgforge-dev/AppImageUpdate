@@ -11,13 +11,6 @@ case "$ARCH" in
     x86_64)
         docker_platform=linux/amd64
         ;;
-    i686)
-        CMAKE_ARCH=i386
-        docker_platform=linux/386
-        ;;
-    armhf)
-        docker_platform=linux/arm/v7
-        ;;
     aarch64)
         docker_platform=linux/arm64/v8
         ;;
