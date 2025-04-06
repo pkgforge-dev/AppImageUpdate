@@ -2,7 +2,7 @@
 # we use Debian because they still provide i386 builds
 # (also, they ship Qt 5.15.2, so we no longer have to rely on third-party builds)
 # and it provides a C++17 compatible compiler out of the box!
-FROM debian:bullseye
+FROM debian:bookworm
 
 ARG ARCH
 ARG DOCKER_ARCH
