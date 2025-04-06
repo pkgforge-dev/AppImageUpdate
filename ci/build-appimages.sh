@@ -66,8 +66,9 @@ export OUTPUT="appimageupdatetool"-"$ARCH".AppImage
 # bundle application
 cd appimageupdatetool.AppDir && (
 	wget "$LIB4BN" -O ./lib4bin
-	mv ./usr ./shared
+	chmod +x ./lib4bin
 
+	mv ./usr ./shared
 	cp -v "$REPO_ROOT"/resources/appimageupdatetool.desktop ./ 
 	cp -v "$REPO_ROOT"/resources/appimage.png ./
 	ln -s appimage.png ./.DirIcon
