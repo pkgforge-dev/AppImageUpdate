@@ -25,7 +25,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
-      - name: Build AppImage in Docker
+      - name: Build AppImage in Docker 😫
         run: bash -ex ci/build-in-docker.sh
 
       - name: Archive artifacts
