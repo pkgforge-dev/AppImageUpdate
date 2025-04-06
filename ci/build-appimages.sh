@@ -60,25 +60,22 @@ rm appimageupdatetool.AppDir/usr/lib/*/libappimageupdate-qt*.so* || true
 rm -rf appimageupdatetool.AppDir/usr/include || true
 find appimageupdatetool.AppDir -type f -iname '*.a' -delete
 
-# get linuxdeploy and its qt plugin
-wget https://github.com/TheAssassin/linuxdeploy/releases/download/continuous/linuxdeploy-"$CMAKE_ARCH".AppImage
-wget https://github.com/darealshinji/linuxdeploy-plugin-checkrt/releases/download/continuous/linuxdeploy-plugin-checkrt.sh
-chmod +x linuxdeploy*.AppImage linuxdeploy-plugin-checkrt.sh
-
-
 find appimageupdatetool.AppDir/
 export OUTPUT="appimageupdatetool"-"$ARCH".AppImage
 
 # bundle application
-#wget "$LIB4BN" -O ./lib4bin
-#cd "appimageupdatetool".AppDir && (
-#	./lib4bin -p -v -k -s
+cd appimageupdatetool.AppDir && (
+	wget "$LIB4BN" -O ./lib4bin
+	mv ./usr ./shared
 
-#)
+	cp -v "$REPO_ROOT"/resources/appimageupdatetool.desktop ./ 
+	cp -v "$REPO_ROOT"/resources/appimage.png ./
+	ln -s appimage.png ./.DirIcon
 
-
-./linuxdeploy-"$CMAKE_ARCH".AppImage --appdir "appimageupdatetool".AppDir \
-	-d "$REPO_ROOT"/resources/"appimageupdatetool".desktop -i "$REPO_ROOT"/resources/appimage.png --plugin checkrt
+	./lib4bin -p -v -k -s ./shared/bin/*
+	ln ./sharun ./AppRun
+	./sharun -g
+)
 
 # Make appimage with uruntime
 wget "$APPIMAGETOOL" -O ./appimagetool
@@ -86,7 +83,7 @@ chmod +x ./appimagetool
 
 echo "Generating AppImage..."
 ./appimagetool --comp zstd -n -u "$UPINFO" \
-	"$PWD"/AppDir "$PWD"/appimageupdatetool-"$ARCH".AppImage
+	"$PWD"/appimageupdatetool.AppDir "$PWD"/appimageupdatetool-"$ARCH".AppImage
 
 # move AppImage to old cwd
 mv appimageupdatetool*.AppImage* "$OLD_CWD"/
