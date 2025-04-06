@@ -73,7 +73,6 @@ wget "$LIB4BN" -O ./AppDir/lib4bin && (
 	ln -s appimage.png ./.DirIcon
 
 	./lib4bin -p -v -k -s ./shared/bin/*
-	ln ./sharun ./AppRun
 	./sharun -g
 
 	# We need a newer version of glibc since the current one doesn't support --argv0
@@ -87,6 +86,36 @@ wget "$LIB4BN" -O ./AppDir/lib4bin && (
 	cp -vr ./usr/lib/*/* ./shared/lib
 	rm -rf ./usr *.tar.* *.deb
 )
+
+echo '#!/bin/sh
+
+CURRENTDIR="$(dirname "$(readlink -f "$0")")"
+BIN="${ARGV0:-$0}"
+BIN="${BIN#./}"
+
+if [ "$1" = --help ] ||[ -z "$1" ]; then
+	>&2 echo ""
+	>&2 echo "    AppImageUpdate enhanced edition 💪"
+	>&2 echo "    appimageupdatetool CLI and validate CLI in a single AppImage"
+	>&2 echo ""
+	>&2 echo "    Usage: "
+	>&2 echo "    ${APPIMAGE:-$0} [options...] [<path to AppImage>]" to use appimageupdatetool
+	>&2 echo "    ${APPIMAGE:-$0} validate [options...] [<path to AppImage>]" to use validate
+	>&2 echo ""
+	>&2 echo "    You can also symlink this AppImage as 'validate' to launch the validate CLI directly"
+	>&2 echo ""
+fi
+
+if [ -f "$CURRENTDIR/bin/$BIN" ]; then
+	exec "$CURRENTDIR/bin/$BIN" "$@"
+elif [ -f "$CURRENTDIR/bin/$1" ]; then
+	BIN="$1"
+	shift
+	exec "$CURRENTDIR/bin/$BIN" "$@"
+else
+	exec "$CURRENTDIR/bin/appimageupdatetool" "$@"
+fi' > ./AppDir/AppRun
+chmod +x ./AppRun
 
 # Make appimage with uruntime
 wget "$APPIMAGETOOL" -O ./appimagetool
