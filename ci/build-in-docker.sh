@@ -52,7 +52,7 @@ docker run \
     "${tty_args[@]}" \
     -e CI=1 \
     -e GITHUB_RUN_NUMBER \
-    -v "$repo_root":/ws:rw \
+    -v "$repo_root":/ws:ro \
     -v "$cwd":/out \
     -w /out \
     --user "$uid" \
