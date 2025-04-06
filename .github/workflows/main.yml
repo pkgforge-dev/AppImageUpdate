@@ -65,6 +65,21 @@ jobs:
       - name: Inspect directory after downloading artifacts
         run: ls -alFR
 
+      - name: Read version
+        run: |
+          cat version
+          export VERSION="$(<version)"
+          echo "APP_VERSION=${VERSION}" >> "${GITHUB_ENV}"
+
+        #Version Release
+      - name: Del Previous Release
+        run: |
+          gh release delete "${APP_VERSION}" --repo "${GITHUB_REPOSITORY}" --cleanup-tag  -y
+          sleep 5
+        env:
+          GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        continue-on-error: true
+
       - name: Create release and upload artifacts
         uses: softprops/action-gh-release@v2
         with:
@@ -76,3 +91,22 @@ jobs:
           make_latest: true
           files: |
             **/*.AppImage*
+
+        #Snapshot Release
+        - name: Get Date
+          run: |
+            SNAPSHOT_TAG="$(date --utc +'%Y%m%d-%H%M%S')"
+            echo SNAPSHOT_TAG="${SNAPSHOT_TAG}" >> "${GITHUB_ENV}"
+          continue-on-error: false
+        - name: Snapshot Releaser
+          uses: softprops/action-gh-release@v2
+          with:
+            name: "Snapshot ${{ env.APP_VERSION}}"
+            tag_name: "${{ env.SNAPSHOT_TAG}}"
+            prerelease: false
+            draft: false
+            generate_release_notes: false
+            make_latest: false
+            files: |
+              **/*.AppImage*
+          continue-on-error: false
