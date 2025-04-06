@@ -60,15 +60,14 @@ rm appimageupdatetool.AppDir/usr/lib/*/libappimageupdate-qt*.so* || true
 rm -rf appimageupdatetool.AppDir/usr/include || true
 find appimageupdatetool.AppDir -type f -iname '*.a' -delete
 
-find appimageupdatetool.AppDir/
-export OUTPUT="appimageupdatetool"-"$ARCH".AppImage
+mv ./appimageupdatetool.AppDir ./AppDir
+find ./AppDir
 
 # bundle application
-cd appimageupdatetool.AppDir && (
-	wget "$LIB4BN" -O ./lib4bin
+wget "$LIB4BN" -O ./AppDir/lib4bin && (
 	chmod +x ./lib4bin
-
 	mv ./usr ./shared
+
 	cp -v "$REPO_ROOT"/resources/appimageupdatetool.desktop ./ 
 	cp -v "$REPO_ROOT"/resources/appimage.png ./
 	ln -s appimage.png ./.DirIcon
@@ -84,7 +83,7 @@ chmod +x ./appimagetool
 
 echo "Generating AppImage..."
 ./appimagetool --comp zstd -n -u "$UPINFO" \
-	"$PWD"/appimageupdatetool.AppDir "$PWD"/appimageupdatetool-"$ARCH".AppImage
+	"$PWD"/AppDir "$PWD"/appimageupdatetool-"$ARCH".AppImage
 
 # move AppImage to old cwd
 mv appimageupdatetool*.AppImage* "$OLD_CWD"/
