@@ -56,7 +56,8 @@ fi
 rm appimageupdatetool.AppDir/usr/bin/AppImageUpdate
 rm appimageupdatetool.AppDir/usr/bin/validate
 rm appimageupdatetool.AppDir/usr/lib/*/libappimageupdate-qt*.so*
-rm validate.AppDir/usr/bin/{AppImageUpdate,appimageupdatetool}
+rm validate.AppDir/usr/bin/AppImageUpdate
+rm validate.AppDir/usr/bin/appimageupdatetool
 rm validate.AppDir/usr/lib/*/libappimageupdate*.so*
 
 
