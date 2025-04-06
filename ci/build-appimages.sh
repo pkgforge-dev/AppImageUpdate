@@ -32,7 +32,7 @@ export ARCH=${ARCH:-"$(uname -m)"}
 cmake "$REPO_ROOT" \
     -DBUILD_QT_UI=ON \
     -DCMAKE_INSTALL_PREFIX=/usr \
-    -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+    -DCMAKE_BUILD_TYPE=MinSizeRel \
     "${EXTRA_CMAKE_ARGS[@]}"
 
 # next step is to build the binaries
