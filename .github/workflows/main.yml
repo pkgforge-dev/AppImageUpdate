@@ -33,12 +33,9 @@ jobs:
         with:
           name: AppImage build ${{ matrix.ARCH }}
           path: |
-            AppImageUpdate*.AppImage*
             appimageupdatetool*.AppImage*
-            validate*.AppImage*
 
       - name: Set version file
-        if: ${{ matrix.optimized == false }}
         run: |
           echo "$GITHUB_SHA"
           echo "$GITHUB_SHA" | cut -c 1-9 > ~/version
@@ -84,7 +81,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           name: "Continuous Build"
-          tag_name: "continuous"
+          tag_name: "${{ env.APP_VERSION }}"
           prerelease: false
           draft: false
           generate_release_notes: false
@@ -98,6 +95,7 @@ jobs:
           SNAPSHOT_TAG="$(date --utc +'%Y%m%d-%H%M%S')"
           echo SNAPSHOT_TAG="${SNAPSHOT_TAG}" >> "${GITHUB_ENV}"
         continue-on-error: false
+
       - name: Snapshot Releaser
         uses: softprops/action-gh-release@v2
         with:
