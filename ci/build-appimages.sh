@@ -35,9 +35,9 @@ make -j"$(nproc)"
 
 # set up the AppDirs initially
 for appdir in appimageupdatetool.AppDir validate.AppDir; do
-    make install DESTDIR="appimageupdatetooldir"
-    mkdir -p "appimageupdatetooldir"/resources
-    cp -v "$REPO_ROOT"/resources/*.xpm "appimageupdatetooldir"/resources/
+	make install DESTDIR="$appdir"
+	mkdir -p "$appdir"/resources
+	cp -v "$REPO_ROOT"/resources/*.xpm "$appdir"/resources/
 done
 
 # determine Git commit ID
@@ -48,16 +48,15 @@ export VERSION
 
 # prepend GitHub run number if possible
 if [ "$GITHUB_RUN_NUMBER" != "" ]; then
-    export VERSION="$GITHUB_RUN_NUMBER-$VERSION"
+	export VERSION="$GITHUB_RUN_NUMBER-$VERSION"
 fi
 
 
 # remove unnecessary files from AppDirs
-rm appimageupdatetool.AppDir/usr/bin/AppImageUpdate || true
-rm appimageupdatetool.AppDir/usr/lib/*/libappimageupdate-qt*.so* || true
-find appimageupdatetool.AppDir -type f -iname '*.a' -delete || true
-rm -rf appimageupdatetool.AppDir/usr/include || true
-
+rm appimageupdatetool.AppDir/usr/bin/AppImageUpdate
+rm appimageupdatetool.AppDir/usr/lib/*/libappimageupdate-qt*.so*
+find appimageupdatetool.AppDir -type f -iname '*.a' -delete
+rm -rf appimageupdatetool.AppDir/usr/include
 
 # get linuxdeploy and its qt plugin
 wget https://github.com/TheAssassin/linuxdeploy/releases/download/continuous/linuxdeploy-"$CMAKE_ARCH".AppImage
