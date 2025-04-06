@@ -1,17 +1,11 @@
-#! /bin/bash
+#!/bin/bash
 
-set -x
-set -e
-set -o pipefail
+set -ex
 
 export APPIMAGE_EXTRACT_AND_RUN=1
 
 # use RAM disk if possible
-if [ "$CI" == "" ] && [ -d /dev/shm ]; then
-    TEMP_BASE=/dev/shm
-else
-    TEMP_BASE=/tmp
-fi
+TEMP_BASE=/tmp
 
 BUILD_DIR="$(mktemp -d -p "$TEMP_BASE" AppImageUpdate-build-XXXXXX)"
 
@@ -27,21 +21,20 @@ trap cleanup EXIT
 REPO_ROOT="$(readlink -f "$(dirname "$(dirname "$0")")")"
 OLD_CWD="$(readlink -f .)"
 
-pushd "$BUILD_DIR"
+cd "$BUILD_DIR"
 
 export ARCH=${ARCH:-"$(uname -m)"}
 
 cmake "$REPO_ROOT" \
     -DBUILD_QT_UI=ON \
     -DCMAKE_INSTALL_PREFIX=/usr \
-    -DCMAKE_BUILD_TYPE=MinSizeRel \
-    "${EXTRA_CMAKE_ARGS[@]}"
+    -DCMAKE_BUILD_TYPE=MinSizeRel
 
 # next step is to build the binaries
 make -j"$(nproc)"
 
 # set up the AppDirs initially
-for appdir in {appimageupdatetool,validate}.AppDir; do
+for appdir in appimageupdatetool.AppDir validate.AppDir; do
     make install DESTDIR="$appdir"
     mkdir -p "$appdir"/resources
     cp -v "$REPO_ROOT"/resources/*.xpm "$appdir"/resources/
@@ -78,19 +71,19 @@ wget https://github.com/darealshinji/linuxdeploy-plugin-checkrt/releases/downloa
 chmod +x linuxdeploy*.AppImage linuxdeploy-plugin-checkrt.sh
 
 for app in appimageupdatetool validate; do
-    find "$app".AppDir/
-
-    export UPD_INFO="gh-releases-zsync|pkgforge-dev|AppImageUpdate|continuous|$app-*$ARCH.AppImage.zsync"
-
-    # overwrite AppImage filename to get static filenames
-    # see https://github.com/AppImage/AppImageUpdate/issues/89
-    export OUTPUT="$app"-"$ARCH".AppImage
-
-    # bundle application
-    ./linuxdeploy-"$CMAKE_ARCH".AppImage --appdir "$app".AppDir --output appimage -d "$REPO_ROOT"/resources/"$app".desktop -i "$REPO_ROOT"/resources/appimage.png --plugin checkrt
+	find "$app".AppDir/
+	export UPD_INFO="gh-releases-zsync|pkgforge-dev|AppImageUpdate|continuous|$app-*$ARCH.AppImage.zsync"
+	
+	# overwrite AppImage filename to get static filenames
+	# see https://github.com/AppImage/AppImageUpdate/issues/89
+	export OUTPUT="$app"-"$ARCH".AppImage
+	
+	# bundle application
+	./linuxdeploy-"$CMAKE_ARCH".AppImage --appdir "$app".AppDir --output appimage -d "$REPO_ROOT"/resources/"$app".desktop -i "$REPO_ROOT"/resources/appimage.png --plugin checkrt
 done
 
 # move AppImages to old cwd
-mv {appimageupdatetool,validate}*.AppImage* "$OLD_CWD"/
+mv appimageupdatetool*.AppImage* "$OLD_CWD"/
+mv validate*.AppImage* "$OLD_CWD"/
 
 popd
