@@ -11,7 +11,6 @@ UPINFO="gh-releases-zsync|pkgforge-dev|AppImageUpdate|latest|*$ARCH.AppImage.zsy
 
 # use RAM disk if possible
 TEMP_BASE=/tmp
-
 BUILD_DIR="$(mktemp -d -p "$TEMP_BASE" AppImageUpdate-build-XXXXXX)"
 
 cleanup () {
@@ -123,8 +122,8 @@ chmod +x ./appimagetool
 
 echo "Generating AppImage..."
 ./appimagetool --comp zstd -n -u "$UPINFO" \
-	"$PWD"/AppDir "$PWD"/appimageupdatetool-"$ARCH".AppImage
+	"$PWD"/AppDir "$PWD"/appimageupdatetool+validate-"$ARCH".AppImage
 
 # move AppImage to old cwd
-mv appimageupdatetool*.AppImage* "$OLD_CWD"/
+mv appimageupdatetool+validate*.AppImage* "$OLD_CWD"/
 cd -
