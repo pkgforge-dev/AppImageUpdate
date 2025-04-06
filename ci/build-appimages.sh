@@ -44,7 +44,7 @@ done
 # appimagetool uses this for naming the file
 VERSION="$(cd "$REPO_ROOT" && git rev-parse --short HEAD)"
 export VERSION
-echo "$VERSION" > ~/version
+#echo "$VERSION" > ~/version
 
 # prepend GitHub run number if possible
 if [ "$GITHUB_RUN_NUMBER" != "" ]; then
@@ -60,23 +60,18 @@ rm -rf appimageupdatetool.AppDir/usr/include
 
 # get linuxdeploy and its qt plugin
 wget https://github.com/TheAssassin/linuxdeploy/releases/download/continuous/linuxdeploy-"$CMAKE_ARCH".AppImage
-wget https://github.com/TheAssassin/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-"$CMAKE_ARCH".AppImage
 wget https://github.com/darealshinji/linuxdeploy-plugin-checkrt/releases/download/continuous/linuxdeploy-plugin-checkrt.sh
 chmod +x linuxdeploy*.AppImage linuxdeploy-plugin-checkrt.sh
 
 
 find appimageupdatetool.AppDir/
 export UPD_INFO="gh-releases-zsync|pkgforge-dev|AppImageUpdate|continuous|*$ARCH.AppImage.zsync"
-
-# overwrite AppImage filename to get static filenames
-# see https://github.com/AppImage/AppImageUpdate/issues/89
 export OUTPUT="appimageupdatetool"-"$ARCH".AppImage
 
 # bundle application
 ./linuxdeploy-"$CMAKE_ARCH".AppImage --appdir "appimageupdatetool".AppDir --output appimage \
 	-d "$REPO_ROOT"/resources/"appimageupdatetool".desktop -i "$REPO_ROOT"/resources/appimage.png --plugin checkrt
 
-
-# move AppImages to old cwd
+# move AppImage to old cwd
 mv appimageupdatetool*.AppImage* "$OLD_CWD"/
 cd -
