@@ -65,6 +65,7 @@ find ./AppDir
 
 # bundle application
 wget "$LIB4BN" -O ./AppDir/lib4bin && (
+	cd ./AppDir
 	chmod +x ./lib4bin
 	mv ./usr ./shared
 
