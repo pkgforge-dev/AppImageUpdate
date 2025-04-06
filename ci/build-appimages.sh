@@ -66,7 +66,7 @@ chmod +x linuxdeploy*.AppImage linuxdeploy-plugin-checkrt.sh
 
 
 find appimageupdatetool.AppDir/
-export UPD_INFO="gh-releases-zsync|pkgforge-dev|AppImageUpdate|continuous|*$ARCH.AppImage.zsync"
+export UPD_INFO="gh-releases-zsync|pkgforge-dev|AppImageUpdate|latest|*$ARCH.AppImage.zsync"
 export OUTPUT="appimageupdatetool"-"$ARCH".AppImage
 
 # bundle application
