@@ -26,7 +26,7 @@ cd "$BUILD_DIR"
 export ARCH=${ARCH:-"$(uname -m)"}
 
 cmake "$REPO_ROOT" \
-    -DBUILD_QT_UI=ON \
+    -DBUILD_QT_UI=OFF \
     -DCMAKE_INSTALL_PREFIX=/usr \
     -DCMAKE_BUILD_TYPE=MinSizeRel
 
@@ -53,10 +53,11 @@ fi
 
 
 # remove unnecessary files from AppDirs
-rm appimageupdatetool.AppDir/usr/bin/AppImageUpdate
-rm appimageupdatetool.AppDir/usr/lib/*/libappimageupdate-qt*.so*
+rm appimageupdatetool.AppDir/usr/bin/AppImageUpdate || true
+rm appimageupdatetool.AppDir/usr/lib/*/libappimageupdate-qt*.so* || true
+rm -rf appimageupdatetool.AppDir/usr/include || true
 find appimageupdatetool.AppDir -type f -iname '*.a' -delete
-rm -rf appimageupdatetool.AppDir/usr/include
+
 
 # get linuxdeploy and its qt plugin
 wget https://github.com/TheAssassin/linuxdeploy/releases/download/continuous/linuxdeploy-"$CMAKE_ARCH".AppImage
