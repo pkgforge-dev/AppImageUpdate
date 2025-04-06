@@ -95,7 +95,7 @@ BIN="${BIN#./}"
 
 if [ "$1" = --help ] ||[ -z "$1" ]; then
 	>&2 echo ""
-	>&2 echo "    AppImageUpdate enhanced edition 💪"
+	>&2 echo "    AppImageUpdate Enhanced Edition 💪"
 	>&2 echo "    appimageupdatetool CLI and validate CLI in a single AppImage"
 	>&2 echo ""
 	>&2 echo "    Usage: "
