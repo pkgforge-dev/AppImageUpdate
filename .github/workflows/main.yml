@@ -27,6 +27,7 @@ jobs:
           submodules: recursive
       - name: Build AppImage in Docker
         run: bash -ex ci/build-in-docker.sh
+
       - name: Archive artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -35,6 +36,19 @@ jobs:
             AppImageUpdate*.AppImage*
             appimageupdatetool*.AppImage*
             validate*.AppImage*
+
+      - name: Check version file
+        if: ${{ matrix.optimized == false }}
+        run: |
+          cat ~/version
+          echo "APP_VERSION=$(cat ~/version)" >> "${GITHUB_ENV}"
+
+      - name: Upload version file
+        uses: actions/upload-artifact@v4.6.1
+        with:
+          name: version
+          path: ~/version
+          overwrite: true
 
   appimage-upload:
     name: "Create release and upload artifacts"
