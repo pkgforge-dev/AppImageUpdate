@@ -83,7 +83,7 @@ wget "$LIB4BN" -O ./AppDir/lib4bin && (
 	ar x *.deb
 	tar fx data.tar.xz
 	cp -vr ./usr/lib/*/* ./shared/lib
-	rm -rf ./usr *.tar.* *.deb
+	rm -rf ./usr *.tar.* *.deb ./shared/lib/gconv
 )
 
 echo '#!/bin/sh
