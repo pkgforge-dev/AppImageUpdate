@@ -6,7 +6,8 @@ export APPIMAGE_EXTRACT_AND_RUN=1
 export ARCH=${ARCH:-"$(uname -m)"}
 
 LIB4BN="https://raw.githubusercontent.com/VHSgunzo/sharun/refs/heads/main/lib4bin"
-APPIMAGETOOL="https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-$ARCH.AppImage"
+URUNTIME="https://github.com/VHSgunzo/uruntime/releases/latest/download/uruntime-appimage-dwarfs-$ARCH"
+URUNTIME_LITE="https://github.com/VHSgunzo/uruntime/releases/latest/download/uruntime-appimage-dwarfs-lite-$ARCH"
 UPINFO="gh-releases-zsync|pkgforge-dev|AppImageUpdate|latest|*$ARCH.AppImage.zsync"
 
 # use RAM disk if possible
@@ -117,12 +118,24 @@ fi' > ./AppDir/AppRun
 chmod +x ./AppDir/AppRun
 
 # Make appimage with uruntime
-wget "$APPIMAGETOOL" -O ./appimagetool
-chmod +x ./appimagetool
+wget --retry-connrefused --tries=30 "$URUNTIME" -O ./uruntime
+wget --retry-connrefused --tries=30 "$URUNTIME_LITE" -O ./uruntime-lite
+chmod +x ./uruntime*
+
+# Add udpate info to runtime
+echo "Adding update information \"$UPINFO\" to runtime..."
+./uruntime-lite --appimage-addupdinfo "$UPINFO"
 
 echo "Generating AppImage..."
-./appimagetool --comp zstd -n -u "$UPINFO" \
-	"$PWD"/AppDir "$PWD"/appimageupdatetool+validate-"$ARCH".AppImage
+./uruntime --appimage-mkdwarfs -f \
+	--set-owner 0 --set-group 0 \
+	--no-history --no-create-timestamp \
+	--compression lzma -S24 -B8 \
+	--header uruntime-lite \
+	-i ./AppDir -o ./appimageupdatetool+validate-"$ARCH".AppImage
+
+echo "Generating zsync file..."
+zsyncmake *.AppImage -u *.AppImage
 
 # move AppImage to old cwd
 mv appimageupdatetool+validate*.AppImage* "$OLD_CWD"/
