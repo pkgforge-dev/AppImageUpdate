@@ -12,12 +12,39 @@ ENV ARCH=${ARCH} DOCKER_ARCH=${DOCKER_ARCH} CMAKE_ARCH=${CMAKE_ARCH}
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && \
-    apt-get install -y qtbase5-dev qttools5-dev-tools qtwayland5-dev-tools qtwayland5-private-dev \
-        libgl1 libdrm-dev mesa-common-dev \
-        build-essential libssl-dev autoconf automake libtool \
-        wget vim-common desktop-file-utils pkgconf libgpgme-dev \
-        libglib2.0-dev libcairo2-dev librsvg2-dev libfuse-dev git libcurl4-openssl-dev argagg-dev libgcrypt20-dev libboost-dev \
-        liblzma-dev libzstd-dev zlib1g-dev libarchive-dev patchelf strace
+    apt-get install -y argagg-dev \
+        autoconf \
+        automake \
+        build-essential \
+        desktop-file-utils \
+        git \
+        libarchive-dev \
+        libboost-dev \
+        libcairo2-dev \
+        libcurl4-openssl-dev \
+        libdrm-dev \
+        libfuse-dev \
+        libgcrypt20-dev \
+        libgl1 \
+        libglib2.0-dev \
+        libgpgme-dev \
+        liblzma-dev \
+        librsvg2-dev \
+        libssl-dev \
+        libtool \
+        libzstd-dev \
+        mesa-common-dev \
+        patchelf \
+        pkgconf \
+        qtbase5-dev \
+        qttools5-dev-tools \
+        qtwayland5-dev-tools \
+        qtwayland5-private-dev \
+        strace \
+        vim-common \
+        wget \
+        zlib1g-dev \
+        zsync
 
 RUN wget -qO- https://artifacts.assassinate-you.net/prebuilt-cmake/cmake-v3.28.0-debian-bullseye-"${CMAKE_ARCH}".tar.gz | \
     tar xzv -C/usr --strip-components=1
