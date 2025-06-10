@@ -78,7 +78,7 @@ jobs:
         continue-on-error: true
 
       - name: Create release and upload artifacts
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v2.2.2
         with:
           name: "Continuous Build"
           tag_name: "${{ env.APP_VERSION }}"
@@ -97,7 +97,7 @@ jobs:
         continue-on-error: false
 
       - name: Snapshot Releaser
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v2.2.2
         with:
           name: "Snapshot ${{ env.APP_VERSION}}"
           tag_name: "${{ env.SNAPSHOT_TAG}}"
