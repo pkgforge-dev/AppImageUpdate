@@ -7,6 +7,13 @@ use crate::appimage::AppImage;
 use crate::error::{Error, Result};
 use crate::update_info::UpdateInfo;
 
+struct UpdateContext {
+    source_size: u64,
+    target_size: u64,
+    block_size: usize,
+    original_perms: Option<fs::Permissions>,
+}
+
 #[derive(Debug)]
 pub struct UpdateStats {
     pub source_path: PathBuf,
@@ -124,7 +131,8 @@ impl Updater {
                 return Ok(false);
             }
 
-            if !self.overwrite {
+            let same_file = self.appimage.path() == output_path;
+            if !same_file && !self.overwrite {
                 return Err(Error::AppImage(format!(
                     "Output file already exists: {}",
                     output_path.display()
@@ -175,7 +183,8 @@ impl Updater {
                 return Ok((output_path, stats));
             }
 
-            if !self.overwrite {
+            let same_file = self.appimage.path() == output_path;
+            if !same_file && !self.overwrite {
                 return Err(Error::AppImage(format!(
                     "Output file already exists: {}",
                     output_path.display()
@@ -183,21 +192,58 @@ impl Updater {
             }
         }
 
-        let original_perms = fs::metadata(self.appimage.path())
-            .map(|m| m.permissions())
-            .ok();
+        let ctx = UpdateContext {
+            source_size: self.source_size(),
+            target_size: control.length,
+            block_size: control.blocksize,
+            original_perms: fs::metadata(self.appimage.path())
+                .map(|m| m.permissions())
+                .ok(),
+        };
 
-        let source_size = self.source_size();
-        let target_size = control.length;
-        let block_size = control.blocksize;
+        let source_path = self.appimage.path();
+        let same_file = source_path == output_path;
 
-        let assembly = ZsyncAssembly::from_url(&zsync_url, &output_path)
+        let (actual_source_path, backup_path) = if same_file {
+            let filename = source_path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("appimage");
+            let backup = source_path.with_file_name(format!("{}.old", filename));
+            let _ = fs::remove_file(&backup);
+            fs::rename(source_path, &backup)?;
+            (backup.clone(), Some(backup))
+        } else {
+            (source_path.to_path_buf(), None)
+        };
+
+        let result = self.do_update(&actual_source_path, &output_path, &zsync_url, &ctx);
+
+        match result {
+            Ok(stats) => Ok((output_path, stats)),
+            Err(e) => {
+                if let Some(backup) = backup_path {
+                    let _ = fs::rename(&backup, source_path);
+                }
+                Err(e)
+            }
+        }
+    }
+
+    fn do_update(
+        &self,
+        source_path: &Path,
+        output_path: &Path,
+        zsync_url: &str,
+        ctx: &UpdateContext,
+    ) -> Result<UpdateStats> {
+        let assembly = ZsyncAssembly::from_url(zsync_url, output_path)
             .map_err(|e| Error::Zsync(format!("Failed to initialize zsync: {}", e)))?;
 
         let mut assembly = assembly;
 
         let blocks_reused = assembly
-            .submit_source_file(self.appimage.path())
+            .submit_source_file(source_path)
             .map_err(|e| Error::Zsync(format!("Failed to submit source file: {}", e)))?;
 
         let self_blocks = assembly
@@ -213,21 +259,19 @@ impl Updater {
             .complete()
             .map_err(|e| Error::Zsync(format!("Failed to complete assembly: {}", e)))?;
 
-        if let Some(perms) = original_perms {
-            fs::set_permissions(&output_path, perms)?;
+        if let Some(ref perms) = ctx.original_perms {
+            fs::set_permissions(output_path, perms.clone())?;
         }
 
-        let stats = UpdateStats {
+        Ok(UpdateStats {
             source_path: self.appimage.path().to_path_buf(),
-            source_size,
-            target_path: output_path.clone(),
-            target_size,
+            source_size: ctx.source_size,
+            target_path: output_path.to_path_buf(),
+            target_size: ctx.target_size,
             blocks_reused,
             blocks_downloaded,
-            block_size,
-        };
-
-        Ok((output_path, stats))
+            block_size: ctx.block_size,
+        })
     }
 
     pub fn output_path(&self) -> Result<PathBuf> {
