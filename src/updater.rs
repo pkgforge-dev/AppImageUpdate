@@ -20,32 +20,27 @@ impl Updater {
         let update_info_str = appimage.read_update_info()?;
         let update_info = UpdateInfo::parse(&update_info_str)?;
 
+        let output_dir = path.parent().map(|p| p.to_path_buf()).unwrap_or_default();
+
         Ok(Self {
             appimage,
             update_info,
-            output_dir: std::env::current_dir().map_err(|e| {
-                Error::Io(std::io::Error::other(format!(
-                    "Failed to get current directory: {}",
-                    e
-                )))
-            })?,
+            output_dir,
             overwrite: false,
         })
     }
 
     pub fn with_update_info<P: AsRef<Path>>(path: P, update_info: &str) -> Result<Self> {
-        let appimage = AppImage::open(path.as_ref())?;
+        let path = path.as_ref();
+        let appimage = AppImage::open(path)?;
         let update_info = UpdateInfo::parse(update_info)?;
+
+        let output_dir = path.parent().map(|p| p.to_path_buf()).unwrap_or_default();
 
         Ok(Self {
             appimage,
             update_info,
-            output_dir: std::env::current_dir().map_err(|e| {
-                Error::Io(std::io::Error::other(format!(
-                    "Failed to get current directory: {}",
-                    e
-                )))
-            })?,
+            output_dir,
             overwrite: false,
         })
     }
