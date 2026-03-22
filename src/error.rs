@@ -16,6 +16,9 @@ pub enum Error {
 
     #[error("AppImage error: {0}")]
     AppImage(String),
+
+    #[error("Zsync error: {0}")]
+    Zsync(String),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
