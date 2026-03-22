@@ -1,13 +1,13 @@
 use std::path::{Path, PathBuf};
 
+use zsync_rs::ZsyncAssembly;
+
 use crate::appimage::AppImage;
 use crate::error::{Error, Result};
 use crate::update_info::UpdateInfo;
 
 pub struct Updater {
-    #[allow(dead_code)]
     appimage: AppImage,
-    #[allow(dead_code)]
     update_info: UpdateInfo,
     output_dir: PathBuf,
     overwrite: bool,
@@ -61,10 +61,63 @@ impl Updater {
     }
 
     pub fn check_for_update(&self) -> Result<bool> {
-        todo!("Implement update check")
+        let zsync_url = self.update_info.zsync_url()?;
+        let http = zsync_rs::HttpClient::new();
+        let _control = http
+            .fetch_control_file(&zsync_url)
+            .map_err(|e| Error::Zsync(format!("Failed to fetch control file: {}", e)))?;
+
+        let output_path = self.output_path();
+        if output_path.exists() && !self.overwrite {
+            return Err(Error::AppImage(format!(
+                "Output file already exists: {}",
+                output_path.display()
+            )));
+        }
+
+        Ok(true)
     }
 
     pub fn perform_update(&self) -> Result<PathBuf> {
-        todo!("Implement update")
+        let zsync_url = self.update_info.zsync_url()?;
+        let output_path = self.output_path();
+
+        if output_path.exists() && !self.overwrite {
+            return Err(Error::AppImage(format!(
+                "Output file already exists: {}",
+                output_path.display()
+            )));
+        }
+
+        let assembly = ZsyncAssembly::from_url(&zsync_url, &output_path)
+            .map_err(|e| Error::AppImage(format!("Failed to initialize zsync: {}", e)))?;
+
+        let mut assembly = assembly;
+
+        assembly
+            .submit_source_file(self.appimage.path())
+            .map_err(|e| Error::AppImage(format!("Failed to submit source file: {}", e)))?;
+
+        assembly
+            .submit_self_referential()
+            .map_err(|e| Error::AppImage(format!("Self-referential scan failed: {}", e)))?;
+
+        assembly
+            .download_missing_blocks()
+            .map_err(|e| Error::AppImage(format!("Failed to download blocks: {}", e)))?;
+
+        assembly
+            .complete()
+            .map_err(|e| Error::AppImage(format!("Failed to complete assembly: {}", e)))?;
+
+        Ok(output_path)
+    }
+
+    pub fn progress(&self) -> Option<(u64, u64)> {
+        None
+    }
+
+    fn output_path(&self) -> PathBuf {
+        self.appimage.path().to_path_buf()
     }
 }
