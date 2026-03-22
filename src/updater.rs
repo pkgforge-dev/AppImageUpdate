@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use zsync_rs::ZsyncAssembly;
+use zsync_rs::{ControlFile, ZsyncAssembly};
 
 use crate::appimage::AppImage;
 use crate::error::{Error, Result};
@@ -60,14 +60,27 @@ impl Updater {
         self
     }
 
-    pub fn check_for_update(&self) -> Result<bool> {
+    fn fetch_control_file(&self) -> Result<(ControlFile, String)> {
         let zsync_url = self.update_info.zsync_url()?;
         let http = zsync_rs::HttpClient::new();
-        let _control = http
+        let control = http
             .fetch_control_file(&zsync_url)
             .map_err(|e| Error::Zsync(format!("Failed to fetch control file: {}", e)))?;
+        Ok((control, zsync_url))
+    }
 
-        let output_path = self.output_path();
+    fn resolve_output_path(&self, control: &ControlFile) -> Result<PathBuf> {
+        let filename = control
+            .filename
+            .as_ref()
+            .ok_or_else(|| Error::Zsync("Control file has no filename".into()))?;
+        Ok(self.output_dir.join(filename))
+    }
+
+    pub fn check_for_update(&self) -> Result<bool> {
+        let (control, _zsync_url) = self.fetch_control_file()?;
+
+        let output_path = self.resolve_output_path(&control)?;
         if output_path.exists() && !self.overwrite {
             return Err(Error::AppImage(format!(
                 "Output file already exists: {}",
@@ -79,8 +92,8 @@ impl Updater {
     }
 
     pub fn perform_update(&self) -> Result<PathBuf> {
-        let zsync_url = self.update_info.zsync_url()?;
-        let output_path = self.output_path();
+        let (control, zsync_url) = self.fetch_control_file()?;
+        let output_path = self.resolve_output_path(&control)?;
 
         if output_path.exists() && !self.overwrite {
             return Err(Error::AppImage(format!(
@@ -90,34 +103,30 @@ impl Updater {
         }
 
         let assembly = ZsyncAssembly::from_url(&zsync_url, &output_path)
-            .map_err(|e| Error::AppImage(format!("Failed to initialize zsync: {}", e)))?;
+            .map_err(|e| Error::Zsync(format!("Failed to initialize zsync: {}", e)))?;
 
         let mut assembly = assembly;
 
         assembly
             .submit_source_file(self.appimage.path())
-            .map_err(|e| Error::AppImage(format!("Failed to submit source file: {}", e)))?;
+            .map_err(|e| Error::Zsync(format!("Failed to submit source file: {}", e)))?;
 
         assembly
             .submit_self_referential()
-            .map_err(|e| Error::AppImage(format!("Self-referential scan failed: {}", e)))?;
+            .map_err(|e| Error::Zsync(format!("Self-referential scan failed: {}", e)))?;
 
         assembly
             .download_missing_blocks()
-            .map_err(|e| Error::AppImage(format!("Failed to download blocks: {}", e)))?;
+            .map_err(|e| Error::Zsync(format!("Failed to download blocks: {}", e)))?;
 
         assembly
             .complete()
-            .map_err(|e| Error::AppImage(format!("Failed to complete assembly: {}", e)))?;
+            .map_err(|e| Error::Zsync(format!("Failed to complete assembly: {}", e)))?;
 
         Ok(output_path)
     }
 
     pub fn progress(&self) -> Option<(u64, u64)> {
         None
-    }
-
-    fn output_path(&self) -> PathBuf {
-        self.appimage.path().to_path_buf()
     }
 }
