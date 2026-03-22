@@ -2,6 +2,12 @@
 name = "appimageupdate"
 version = "0.1.0"
 edition = "2024"
+description = "Fast, bandwidth-efficient AppImage updater using zsync"
+readme = "README.md"
+repository = "https://github.com/pkgforge-dev/appimageupdate"
+license = "MIT"
+keywords = ["appimage", "zsync"]
+rust-version = "1.88"
 
 [dependencies]
 clap = { version = "4.6.0", features = ["derive", "env"] }
@@ -12,3 +18,10 @@ sha1 = "0.10.6"
 thiserror = "2.0.18"
 ureq = "3.3.0"
 zsync-rs = { git = "https://github.com/QaidVoid/zsync-rs.git", version = "0.1.0" }
+
+[profile.release]
+opt-level = "z"
+strip = true
+lto = true
+panic = "abort"
+codegen-units = 1
