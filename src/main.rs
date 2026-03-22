@@ -37,8 +37,24 @@ fn main() {
     let cli = Cli::parse();
 
     if let Err(e) = run(cli) {
-        eprintln!("Error: {}", e);
+        eprintln!("\nError: {}", e);
         std::process::exit(1);
+    }
+}
+
+fn format_size(bytes: u64) -> String {
+    const KB: u64 = 1024;
+    const MB: u64 = 1024 * KB;
+    const GB: u64 = 1024 * MB;
+
+    if bytes >= GB {
+        format!("{:.1} GB", bytes as f64 / GB as f64)
+    } else if bytes >= MB {
+        format!("{:.1} MB", bytes as f64 / MB as f64)
+    } else if bytes >= KB {
+        format!("{:.1} KB", bytes as f64 / KB as f64)
+    } else {
+        format!("{} B", bytes)
     }
 }
 
@@ -59,23 +75,74 @@ fn run(cli: Cli) -> Result<(), Error> {
                 updater = updater.output_dir(dir);
             }
 
-            println!("Checking for update...");
+            let source_path = updater.source_path();
+            let source_size = updater.source_size();
+            let (target_path, target_size) = updater.target_info()?;
+
+            println!(
+                "Source:   {} ({})",
+                source_path.display(),
+                format_size(source_size)
+            );
+            println!(
+                "Target:   {} ({})",
+                target_path.display(),
+                format_size(target_size)
+            );
+            println!();
+
             if updater.check_for_update()? {
-                println!("Update available. Performing delta update...");
-                let new_path = updater.perform_update()?;
-                println!("Updated AppImage: {}", new_path.display());
+                println!("Performing delta update...");
+                let (new_path, stats) = updater.perform_update()?;
+
+                if stats.blocks_reused > 0 || stats.blocks_downloaded > 0 {
+                    println!();
+                    println!(
+                        "Reused:      {:>10}  ({} blocks)",
+                        format_size(stats.bytes_reused()),
+                        stats.blocks_reused
+                    );
+                    println!(
+                        "Downloaded:  {:>10}  ({} blocks)",
+                        format_size(stats.bytes_downloaded()),
+                        stats.blocks_downloaded
+                    );
+                    println!(
+                        "Saved:       {:>10}  ({}%)",
+                        format_size(stats.bytes_reused()),
+                        stats.saved_percentage()
+                    );
+                }
+
+                println!();
+                println!("Updated: {}", new_path.display());
             } else {
-                let output_path = updater.output_path()?;
-                println!("Already up to date: {}", output_path.display());
+                println!("Already up to date!");
             }
         }
         Commands::Check { path } => {
             let updater = Updater::new(&path)?;
 
+            let source_path = updater.source_path();
+            let source_size = updater.source_size();
+            let (target_path, target_size) = updater.target_info()?;
+
+            println!(
+                "Source:   {} ({})",
+                source_path.display(),
+                format_size(source_size)
+            );
+            println!(
+                "Target:   {} ({})",
+                target_path.display(),
+                format_size(target_size)
+            );
+            println!();
+
             if updater.check_for_update()? {
-                println!("Update available.");
+                println!("Status: Update available");
             } else {
-                println!("No update available.");
+                println!("Status: Up to date");
             }
         }
     }

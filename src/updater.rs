@@ -7,6 +7,34 @@ use crate::appimage::AppImage;
 use crate::error::{Error, Result};
 use crate::update_info::UpdateInfo;
 
+#[derive(Debug)]
+pub struct UpdateStats {
+    pub source_path: PathBuf,
+    pub source_size: u64,
+    pub target_path: PathBuf,
+    pub target_size: u64,
+    pub blocks_reused: usize,
+    pub blocks_downloaded: usize,
+    pub block_size: usize,
+}
+
+impl UpdateStats {
+    pub fn bytes_reused(&self) -> u64 {
+        (self.blocks_reused * self.block_size) as u64
+    }
+
+    pub fn bytes_downloaded(&self) -> u64 {
+        (self.blocks_downloaded * self.block_size) as u64
+    }
+
+    pub fn saved_percentage(&self) -> u64 {
+        if self.target_size == 0 {
+            return 0;
+        }
+        (self.bytes_reused() * 100 / self.target_size).min(100)
+    }
+}
+
 pub struct Updater {
     appimage: AppImage,
     update_info: UpdateInfo,
@@ -107,7 +135,23 @@ impl Updater {
         Ok(true)
     }
 
-    pub fn perform_update(&self) -> Result<PathBuf> {
+    pub fn source_path(&self) -> &Path {
+        self.appimage.path()
+    }
+
+    pub fn source_size(&self) -> u64 {
+        fs::metadata(self.appimage.path())
+            .map(|m| m.len())
+            .unwrap_or(0)
+    }
+
+    pub fn target_info(&self) -> Result<(PathBuf, u64)> {
+        let (control, _zsync_url) = self.fetch_control_file()?;
+        let output_path = self.resolve_output_path(&control)?;
+        Ok((output_path, control.length))
+    }
+
+    pub fn perform_update(&self) -> Result<(PathBuf, UpdateStats)> {
         let (control, zsync_url) = self.fetch_control_file()?;
         let output_path = self.resolve_output_path(&control)?;
 
@@ -115,7 +159,16 @@ impl Updater {
             if let Some(ref expected_sha1) = control.sha1
                 && self.verify_existing_file(&output_path, expected_sha1)?
             {
-                return Ok(output_path);
+                let stats = UpdateStats {
+                    source_path: self.appimage.path().to_path_buf(),
+                    source_size: self.source_size(),
+                    target_path: output_path.clone(),
+                    target_size: control.length,
+                    blocks_reused: 0,
+                    blocks_downloaded: 0,
+                    block_size: control.blocksize,
+                };
+                return Ok((output_path, stats));
             }
 
             if !self.overwrite {
@@ -130,20 +183,25 @@ impl Updater {
             .map(|m| m.permissions())
             .ok();
 
+        let source_size = self.source_size();
+        let target_size = control.length;
+        let block_size = control.blocksize;
+
         let assembly = ZsyncAssembly::from_url(&zsync_url, &output_path)
             .map_err(|e| Error::Zsync(format!("Failed to initialize zsync: {}", e)))?;
 
         let mut assembly = assembly;
 
-        assembly
+        let blocks_reused = assembly
             .submit_source_file(self.appimage.path())
             .map_err(|e| Error::Zsync(format!("Failed to submit source file: {}", e)))?;
 
-        assembly
+        let self_blocks = assembly
             .submit_self_referential()
             .map_err(|e| Error::Zsync(format!("Self-referential scan failed: {}", e)))?;
+        let blocks_reused = blocks_reused.saturating_add(self_blocks);
 
-        assembly
+        let blocks_downloaded = assembly
             .download_missing_blocks()
             .map_err(|e| Error::Zsync(format!("Failed to download blocks: {}", e)))?;
 
@@ -155,7 +213,17 @@ impl Updater {
             fs::set_permissions(&output_path, perms)?;
         }
 
-        Ok(output_path)
+        let stats = UpdateStats {
+            source_path: self.appimage.path().to_path_buf(),
+            source_size,
+            target_path: output_path.clone(),
+            target_size,
+            blocks_reused,
+            blocks_downloaded,
+            block_size,
+        };
+
+        Ok((output_path, stats))
     }
 
     pub fn output_path(&self) -> Result<PathBuf> {
