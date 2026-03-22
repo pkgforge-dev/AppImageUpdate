@@ -85,7 +85,7 @@ impl GitHubUpdateInfo {
 
         let asset_url = Self::find_matching_asset(&release, &self.filename)?;
 
-        Ok(format!("{}.zsync", asset_url))
+        Ok(asset_url)
     }
 
     fn find_suitable_release(
@@ -139,12 +139,55 @@ impl GitHubUpdateInfo {
         match (pattern.first(), text.first()) {
             (None, None) => true,
             (Some('*'), _) => {
-                Self::glob_match_recursive(pattern, &text[1..])
-                    || Self::glob_match_recursive(&pattern[1..], text)
+                if text.is_empty() {
+                    Self::glob_match_recursive(&pattern[1..], text)
+                } else {
+                    Self::glob_match_recursive(pattern, &text[1..])
+                        || Self::glob_match_recursive(&pattern[1..], text)
+                }
             }
             (Some(p), Some(t)) if *p == *t => Self::glob_match_recursive(&pattern[1..], &text[1..]),
             (Some('?'), Some(_)) => Self::glob_match_recursive(&pattern[1..], &text[1..]),
             _ => false,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_glob_match_exact() {
+        assert!(GitHubUpdateInfo::glob_match("test", "test"));
+        assert!(!GitHubUpdateInfo::glob_match("test", "other"));
+    }
+
+    #[test]
+    fn test_glob_match_wildcard() {
+        assert!(GitHubUpdateInfo::glob_match("*", ""));
+        assert!(GitHubUpdateInfo::glob_match("*", "anything"));
+        assert!(GitHubUpdateInfo::glob_match("*test", "mytest"));
+        assert!(GitHubUpdateInfo::glob_match("test*", "test123"));
+        assert!(GitHubUpdateInfo::glob_match("*test*", "mytestfile"));
+    }
+
+    #[test]
+    fn test_glob_match_question() {
+        assert!(GitHubUpdateInfo::glob_match("test?", "test1"));
+        assert!(!GitHubUpdateInfo::glob_match("test?", "test"));
+        assert!(GitHubUpdateInfo::glob_match("?est", "test"));
+    }
+
+    #[test]
+    fn test_glob_match_appimage_pattern() {
+        assert!(GitHubUpdateInfo::glob_match(
+            "*CPU-X*.AppImage",
+            "CPU-X-5.1.3-x86_64.AppImage"
+        ));
+        assert!(GitHubUpdateInfo::glob_match(
+            "*x86_64.AppImage",
+            "CPU-X-5.1.3-x86_64.AppImage"
+        ));
     }
 }
