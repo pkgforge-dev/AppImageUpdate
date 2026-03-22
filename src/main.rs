@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use clap::Parser;
 use clap::Subcommand;
 
+use appimageupdate::config;
 use appimageupdate::{Error, Updater};
 
 #[derive(Parser)]
@@ -25,11 +26,17 @@ enum Commands {
 
         #[arg(short, long, value_name = "DIR")]
         output: Option<PathBuf>,
+
+        #[arg(long, value_name = "URL", env = "GITHUB_API_PROXY")]
+        github_api_proxy: Option<String>,
     },
 
     Check {
         #[arg(value_name = "APPIMAGE")]
         path: PathBuf,
+
+        #[arg(long, value_name = "URL", env = "GITHUB_API_PROXY")]
+        github_api_proxy: Option<String>,
     },
 }
 
@@ -64,7 +71,10 @@ fn run(cli: Cli) -> Result<(), Error> {
             path,
             overwrite,
             output,
+            github_api_proxy,
         } => {
+            config::init(github_api_proxy);
+
             let mut updater = Updater::new(&path)?;
 
             if overwrite {
@@ -120,7 +130,12 @@ fn run(cli: Cli) -> Result<(), Error> {
                 println!("Already up to date!");
             }
         }
-        Commands::Check { path } => {
+        Commands::Check {
+            path,
+            github_api_proxy,
+        } => {
+            config::init(github_api_proxy);
+
             let updater = Updater::new(&path)?;
 
             let source_path = updater.source_path();

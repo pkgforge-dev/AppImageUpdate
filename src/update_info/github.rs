@@ -2,6 +2,7 @@ use std::cell::OnceCell;
 
 use serde::Deserialize;
 
+use crate::config;
 use crate::error::{Error, Result};
 
 #[derive(Debug, Clone)]
@@ -46,20 +47,36 @@ impl GitHubUpdateInfo {
     }
 
     fn resolve_url(&self) -> Result<String> {
-        let api_url = match self.tag.as_str() {
-            "latest" => format!(
-                "https://api.github.com/repos/{}/{}/releases/latest",
-                self.username, self.repo
-            ),
-            "latest-pre" | "latest-all" => format!(
-                "https://api.github.com/repos/{}/{}/releases",
-                self.username, self.repo
-            ),
+        let api_path = match self.tag.as_str() {
+            "latest" => format!("/repos/{}/{}/releases/latest", self.username, self.repo),
+            "latest-pre" | "latest-all" => {
+                format!("/repos/{}/{}/releases", self.username, self.repo)
+            }
             tag => format!(
-                "https://api.github.com/repos/{}/{}/releases/tags/{}",
+                "/repos/{}/{}/releases/tags/{}",
                 self.username, self.repo, tag
             ),
         };
+
+        let proxies = config::get_proxies();
+        let mut last_error = None;
+
+        if proxies.is_empty() {
+            return self.fetch_release_url(&api_path, None);
+        }
+
+        for proxy in proxies {
+            match self.fetch_release_url(&api_path, Some(proxy)) {
+                Ok(url) => return Ok(url),
+                Err(e) => last_error = Some(e),
+            }
+        }
+
+        Err(last_error.unwrap_or_else(|| Error::GitHubApi("All proxies failed".into())))
+    }
+
+    fn fetch_release_url(&self, api_path: &str, proxy: Option<&str>) -> Result<String> {
+        let api_url = config::build_api_url(api_path, proxy);
 
         let response = ureq::get(&api_url)
             .header("User-Agent", "appimageupdate-rs")
