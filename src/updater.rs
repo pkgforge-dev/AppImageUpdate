@@ -73,15 +73,35 @@ impl Updater {
         Ok(self.output_dir.join(filename))
     }
 
+    fn verify_existing_file(&self, path: &Path, expected_sha1: &str) -> Result<bool> {
+        use sha1::{Digest, Sha1};
+
+        let mut file = fs::File::open(path)?;
+        let mut hasher = Sha1::new();
+        std::io::copy(&mut file, &mut hasher)?;
+        let hash = hasher.finalize();
+        let actual_sha1 = hex::encode(hash);
+
+        Ok(actual_sha1.eq_ignore_ascii_case(expected_sha1))
+    }
+
     pub fn check_for_update(&self) -> Result<bool> {
         let (control, _zsync_url) = self.fetch_control_file()?;
-
         let output_path = self.resolve_output_path(&control)?;
-        if output_path.exists() && !self.overwrite {
-            return Err(Error::AppImage(format!(
-                "Output file already exists: {}",
-                output_path.display()
-            )));
+
+        if output_path.exists() {
+            if let Some(ref expected_sha1) = control.sha1
+                && self.verify_existing_file(&output_path, expected_sha1)?
+            {
+                return Ok(false);
+            }
+
+            if !self.overwrite {
+                return Err(Error::AppImage(format!(
+                    "Output file already exists: {}",
+                    output_path.display()
+                )));
+            }
         }
 
         Ok(true)
@@ -91,11 +111,19 @@ impl Updater {
         let (control, zsync_url) = self.fetch_control_file()?;
         let output_path = self.resolve_output_path(&control)?;
 
-        if output_path.exists() && !self.overwrite {
-            return Err(Error::AppImage(format!(
-                "Output file already exists: {}",
-                output_path.display()
-            )));
+        if output_path.exists() {
+            if let Some(ref expected_sha1) = control.sha1
+                && self.verify_existing_file(&output_path, expected_sha1)?
+            {
+                return Ok(output_path);
+            }
+
+            if !self.overwrite {
+                return Err(Error::AppImage(format!(
+                    "Output file already exists: {}",
+                    output_path.display()
+                )));
+            }
         }
 
         let original_perms = fs::metadata(self.appimage.path())
@@ -128,6 +156,11 @@ impl Updater {
         }
 
         Ok(output_path)
+    }
+
+    pub fn output_path(&self) -> Result<PathBuf> {
+        let (control, _zsync_url) = self.fetch_control_file()?;
+        self.resolve_output_path(&control)
     }
 
     pub fn progress(&self) -> Option<(u64, u64)> {

@@ -65,7 +65,8 @@ fn run(cli: Cli) -> Result<(), Error> {
                 let new_path = updater.perform_update()?;
                 println!("Updated AppImage: {}", new_path.display());
             } else {
-                println!("No update available.");
+                let output_path = updater.output_path()?;
+                println!("Already up to date: {}", output_path.display());
             }
         }
         Commands::Check { path } => {
