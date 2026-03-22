@@ -1,3 +1,4 @@
+use std::fs;
 use std::path::{Path, PathBuf};
 
 use zsync_rs::{ControlFile, ZsyncAssembly};
@@ -97,6 +98,10 @@ impl Updater {
             )));
         }
 
+        let original_perms = fs::metadata(self.appimage.path())
+            .map(|m| m.permissions())
+            .ok();
+
         let assembly = ZsyncAssembly::from_url(&zsync_url, &output_path)
             .map_err(|e| Error::Zsync(format!("Failed to initialize zsync: {}", e)))?;
 
@@ -117,6 +122,10 @@ impl Updater {
         assembly
             .complete()
             .map_err(|e| Error::Zsync(format!("Failed to complete assembly: {}", e)))?;
+
+        if let Some(perms) = original_perms {
+            fs::set_permissions(&output_path, perms)?;
+        }
 
         Ok(output_path)
     }
