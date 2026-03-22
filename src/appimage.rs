@@ -43,6 +43,10 @@ impl AppImage {
         })
     }
 
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+
     pub fn appimage_type(&self) -> AppImageType {
         self.ty
     }
