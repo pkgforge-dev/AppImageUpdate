@@ -145,6 +145,10 @@ impl Updater {
             .unwrap_or(0)
     }
 
+    pub fn update_info(&self) -> &str {
+        self.update_info.raw()
+    }
+
     pub fn target_info(&self) -> Result<(PathBuf, u64)> {
         let (control, _zsync_url) = self.fetch_control_file()?;
         let output_path = self.resolve_output_path(&control)?;

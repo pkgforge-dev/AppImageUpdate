@@ -8,20 +8,34 @@ pub use github::GitHubUpdateInfo;
 use crate::error::Result;
 
 #[derive(Debug, Clone)]
-pub enum UpdateInfo {
+pub struct UpdateInfo {
+    raw: String,
+    inner: UpdateInfoInner,
+}
+
+#[derive(Debug, Clone)]
+enum UpdateInfoInner {
     Generic(GenericUpdateInfo),
     GitHub(GitHubUpdateInfo),
 }
 
 impl UpdateInfo {
     pub fn parse(s: &str) -> Result<Self> {
-        parser::parse(s)
+        let inner = parser::parse(s)?;
+        Ok(Self {
+            raw: s.to_owned(),
+            inner,
+        })
+    }
+
+    pub fn raw(&self) -> &str {
+        &self.raw
     }
 
     pub fn zsync_url(&self) -> Result<String> {
-        match self {
-            UpdateInfo::Generic(g) => Ok(g.zsync_url().to_owned()),
-            UpdateInfo::GitHub(g) => g.zsync_url().map(|s| s.to_owned()),
+        match &self.inner {
+            UpdateInfoInner::Generic(g) => Ok(g.zsync_url().to_owned()),
+            UpdateInfoInner::GitHub(g) => g.zsync_url().map(|s| s.to_owned()),
         }
     }
 }

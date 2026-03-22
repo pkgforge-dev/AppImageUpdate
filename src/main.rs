@@ -1,43 +1,35 @@
 use std::path::PathBuf;
 
 use clap::Parser;
-use clap::Subcommand;
 
 use appimageupdate::config;
 use appimageupdate::{Error, Updater};
 
 #[derive(Parser)]
 #[command(name = "appimageupdate")]
-#[command(about = "Update AppImages using delta updates", long_about = None)]
+#[command(about = "AppImage companion tool taking care of updates for the commandline.", long_about = None)]
 #[command(version)]
 struct Cli {
-    #[command(subcommand)]
-    command: Commands,
-}
+    #[arg(value_name = "APPIMAGE")]
+    path: Option<PathBuf>,
 
-#[derive(Subcommand)]
-enum Commands {
-    Update {
-        #[arg(value_name = "APPIMAGE")]
-        path: PathBuf,
+    #[arg(short = 'O', long)]
+    overwrite: bool,
 
-        #[arg(short, long)]
-        overwrite: bool,
+    #[arg(short = 'r', long)]
+    remove_old: bool,
 
-        #[arg(short, long, value_name = "DIR")]
-        output: Option<PathBuf>,
+    #[arg(short = 'u', long, value_name = "INFO")]
+    update_info: Option<String>,
 
-        #[arg(long, value_name = "URL", env = "GITHUB_API_PROXY")]
-        github_api_proxy: Option<String>,
-    },
+    #[arg(short = 'd', long)]
+    describe: bool,
 
-    Check {
-        #[arg(value_name = "APPIMAGE")]
-        path: PathBuf,
+    #[arg(short = 'j', long)]
+    check_for_update: bool,
 
-        #[arg(long, value_name = "URL", env = "GITHUB_API_PROXY")]
-        github_api_proxy: Option<String>,
-    },
+    #[arg(long, value_name = "URL", env = "GITHUB_API_PROXY")]
+    github_api_proxy: Option<String>,
 }
 
 fn main() {
@@ -66,100 +58,90 @@ fn format_size(bytes: u64) -> String {
 }
 
 fn run(cli: Cli) -> Result<(), Error> {
-    match cli.command {
-        Commands::Update {
-            path,
-            overwrite,
-            output,
-            github_api_proxy,
-        } => {
-            config::init(github_api_proxy);
+    config::init(cli.github_api_proxy);
 
-            let mut updater = Updater::new(&path)?;
+    let path = cli.path.ok_or_else(|| {
+        Error::AppImage("No AppImage path provided. Use --help for usage.".into())
+    })?;
 
-            if overwrite {
-                updater = updater.overwrite(true);
-            }
+    let updater = if let Some(ref update_info) = cli.update_info {
+        Updater::with_update_info(&path, update_info)?
+    } else {
+        Updater::new(&path)?
+    };
 
-            if let Some(dir) = output {
-                updater = updater.output_dir(dir);
-            }
+    if cli.describe {
+        let source_path = updater.source_path();
+        let source_size = updater.source_size();
+        let (target_path, target_size) = updater.target_info()?;
 
-            let source_path = updater.source_path();
-            let source_size = updater.source_size();
-            let (target_path, target_size) = updater.target_info()?;
+        println!("Path:         {}", source_path.display());
+        println!("Size:         {}", format_size(source_size));
+        println!("Target:       {}", target_path.display());
+        println!("Target Size:  {}", format_size(target_size));
+        println!("Update Info:  {}", updater.update_info());
 
-            println!(
-                "Source:   {} ({})",
-                source_path.display(),
-                format_size(source_size)
-            );
-            println!(
-                "Target:   {} ({})",
-                target_path.display(),
-                format_size(target_size)
-            );
+        return Ok(());
+    }
+
+    if cli.check_for_update {
+        let has_update = updater.check_for_update()?;
+        std::process::exit(if has_update { 1 } else { 0 });
+    }
+
+    let source_path = updater.source_path().to_path_buf();
+    let source_size = updater.source_size();
+    let (target_path, target_size) = updater.target_info()?;
+
+    println!(
+        "Source:   {} ({})",
+        source_path.display(),
+        format_size(source_size)
+    );
+    println!(
+        "Target:   {} ({})",
+        target_path.display(),
+        format_size(target_size)
+    );
+    println!();
+
+    let mut updater = updater;
+    if cli.overwrite {
+        updater = updater.overwrite(true);
+    }
+
+    if updater.check_for_update()? {
+        println!("Performing delta update...");
+        let (new_path, stats) = updater.perform_update()?;
+
+        if stats.blocks_reused > 0 || stats.blocks_downloaded > 0 {
             println!();
-
-            if updater.check_for_update()? {
-                println!("Performing delta update...");
-                let (new_path, stats) = updater.perform_update()?;
-
-                if stats.blocks_reused > 0 || stats.blocks_downloaded > 0 {
-                    println!();
-                    println!(
-                        "Reused:      {:>10}  ({} blocks)",
-                        format_size(stats.bytes_reused()),
-                        stats.blocks_reused
-                    );
-                    println!(
-                        "Downloaded:  {:>10}  ({} blocks)",
-                        format_size(stats.bytes_downloaded()),
-                        stats.blocks_downloaded
-                    );
-                    println!(
-                        "Saved:       {:>10}  ({}%)",
-                        format_size(stats.bytes_reused()),
-                        stats.saved_percentage()
-                    );
-                }
-
-                println!();
-                println!("Updated: {}", new_path.display());
-            } else {
-                println!("Already up to date!");
-            }
-        }
-        Commands::Check {
-            path,
-            github_api_proxy,
-        } => {
-            config::init(github_api_proxy);
-
-            let updater = Updater::new(&path)?;
-
-            let source_path = updater.source_path();
-            let source_size = updater.source_size();
-            let (target_path, target_size) = updater.target_info()?;
-
             println!(
-                "Source:   {} ({})",
-                source_path.display(),
-                format_size(source_size)
+                "Reused:      {:>10}  ({} blocks)",
+                format_size(stats.bytes_reused()),
+                stats.blocks_reused
             );
             println!(
-                "Target:   {} ({})",
-                target_path.display(),
-                format_size(target_size)
+                "Downloaded:  {:>10}  ({} blocks)",
+                format_size(stats.bytes_downloaded()),
+                stats.blocks_downloaded
             );
-            println!();
-
-            if updater.check_for_update()? {
-                println!("Status: Update available");
-            } else {
-                println!("Status: Up to date");
-            }
+            println!(
+                "Saved:       {:>10}  ({}%)",
+                format_size(stats.bytes_reused()),
+                stats.saved_percentage()
+            );
         }
+
+        println!();
+        println!("Updated: {}", new_path.display());
+
+        if cli.remove_old && new_path != source_path {
+            std::fs::remove_file(source_path)?;
+            println!("Removed old AppImage");
+        }
+    } else {
+        println!("Already up to date!");
     }
 
     Ok(())

@@ -1,8 +1,8 @@
 use crate::error::{Error, Result};
 
-use super::{GenericUpdateInfo, GitHubUpdateInfo, UpdateInfo};
+use super::{GenericUpdateInfo, GitHubUpdateInfo, UpdateInfoInner};
 
-pub fn parse(s: &str) -> Result<UpdateInfo> {
+pub fn parse(s: &str) -> Result<UpdateInfoInner> {
     let parts: Vec<&str> = s.split('|').collect();
 
     if parts.is_empty() {
@@ -16,7 +16,7 @@ pub fn parse(s: &str) -> Result<UpdateInfo> {
                     "zsync format requires exactly 1 parameter: zsync|<url>".into(),
                 ));
             }
-            Ok(UpdateInfo::Generic(GenericUpdateInfo {
+            Ok(UpdateInfoInner::Generic(GenericUpdateInfo {
                 url: parts[1].into(),
             }))
         }
@@ -26,7 +26,7 @@ pub fn parse(s: &str) -> Result<UpdateInfo> {
                     "gh-releases-zsync format requires 4 parameters: gh-releases-zsync|<username>|<repo>|<tag>|<filename>".into(),
                 ));
             }
-            Ok(UpdateInfo::GitHub(GitHubUpdateInfo::new(
+            Ok(UpdateInfoInner::GitHub(GitHubUpdateInfo::new(
                 parts[1].into(),
                 parts[2].into(),
                 parts[3].into(),
@@ -48,7 +48,7 @@ mod tests {
     fn parse_generic_zsync() {
         let info = parse("zsync|https://example.com/app.AppImage.zsync").unwrap();
         match info {
-            UpdateInfo::Generic(g) => {
+            UpdateInfoInner::Generic(g) => {
                 assert_eq!(g.url, "https://example.com/app.AppImage.zsync");
             }
             _ => panic!("Expected Generic variant"),
@@ -59,7 +59,7 @@ mod tests {
     fn parse_github_releases() {
         let info = parse("gh-releases-zsync|user|repo|latest|app-*.AppImage").unwrap();
         match info {
-            UpdateInfo::GitHub(g) => {
+            UpdateInfoInner::GitHub(g) => {
                 assert_eq!(g.username, "user");
                 assert_eq!(g.repo, "repo");
                 assert_eq!(g.tag, "latest");

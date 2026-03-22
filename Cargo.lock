@@ -739,7 +739,7 @@ checksum = "b8848ee67ecc8aedbaf3e4122217aff892639231befc6a1b58d29fff4c2cabaa"
 [[package]]
 name = "zsync-rs"
 version = "0.1.0"
-source = "git+https://github.com/QaidVoid/zsync-rs.git#f7b239684414bf21a77037bf527f4e6202c80186"
+source = "git+https://github.com/QaidVoid/zsync-rs.git#14dcb5165dc282c1512d17c234f8eb6e350f648e"
 dependencies = [
  "clap",
  "md4",
