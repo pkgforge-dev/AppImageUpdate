@@ -78,10 +78,11 @@ Options:
   -O, --overwrite         Overwrite existing target file
   -r, --remove-old        Remove old AppImage after successful update
   -u, --update-info <INFO> Override update information in the AppImage
+      --output-dir <DIR>  Output directory for updated AppImages
   -d, --describe          Parse and describe AppImage and its update information
   -j, --check-for-update  Check for update (exit 1 if available, 0 if not)
       --github-api-proxy <URL>  GitHub API proxy URL [env: GITHUB_API_PROXY]
-                          (supports comma-separated list for fallback)
+                           (supports comma-separated list for fallback)
   -h, --help              Print help
   -V, --version           Print version
 ```
@@ -93,6 +94,33 @@ Options:
 3. **Calculates Delta** - Compares local file blocks against remote blocks using rolling checksums
 4. **Downloads Only Changes** - Fetches only the blocks that differ from the local copy
 5. **Assembles & Verifies** - Reconstructs the file and verifies SHA1 checksum
+
+## Configuration
+
+Create a config file at `~/.config/appimageupdate/config.toml`:
+
+```toml
+# GitHub API proxy (supports single or multiple for fallback)
+github_api_proxy = "https://ghproxy.net"
+# Or multiple proxies:
+# github_api_proxy = ["https://ghproxy.net", "https://mirror.example.com"]
+
+# Remove old AppImage after successful update
+remove_old = true
+
+# Output directory for updated AppImages (supports shell expansion)
+output_dir = "~/Applications"
+```
+
+### Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `GITHUB_API_PROXY` | GitHub API proxy URL (comma-separated for multiple) |
+| `APPIMAGEUPDATE_REMOVE_OLD` | Set to `true` to remove old AppImage after update |
+| `APPIMAGEUPDATE_OUTPUT_DIR` | Output directory for updated AppImages |
+
+**Priority:** CLI args > Environment variables > Config file
 
 ## Supported Update Formats
 
