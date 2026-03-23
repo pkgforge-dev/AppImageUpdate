@@ -1,0 +1,86 @@
+name: appimageupdate release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  attestations: write
+  contents: write
+  id-token: write
+
+jobs:
+  publish-binaries:
+    name: Publish binaries
+    runs-on: ${{ matrix.build.RUNNER }}
+    strategy:
+      fail-fast: false
+      matrix:
+        build:
+          - {
+              NAME: x86_64-linux,
+              RUNNER: ubuntu-latest,
+              TARGET: x86_64-unknown-linux-musl,
+            }
+          - {
+              NAME: aarch64-linux,
+              RUNNER: ubuntu-24.04-arm,
+              TARGET: aarch64-unknown-linux-musl,
+            }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set the release version
+        shell: bash
+        run: echo "RELEASE_VERSION=${GITHUB_REF:11}" >> $GITHUB_ENV
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends musl-tools b3sum
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          targets: ${{ matrix.build.TARGET }}
+          components: rust-src
+
+      - name: Build
+        run: cargo build --release --locked --target ${{ matrix.build.TARGET }} -Z build-std=std,panic_abort
+
+      - name: Prepare release assets
+        shell: bash
+        run: |
+          mkdir -p release
+          cp {LICENSE,README.md} release/
+          cp "target/${{ matrix.build.TARGET }}/release/appimageupdate" release/
+
+      - name: Create release artifacts
+        shell: bash
+        run: |
+          cp release/appimageupdate appimageupdate-${{ matrix.build.NAME }}
+          b3sum appimageupdate-${{ matrix.build.NAME }} > appimageupdate-${{ matrix.build.NAME }}.b3sum
+          tar -cJvf appimageupdate-${{ matrix.build.NAME }}.tar.xz release/
+          b3sum appimageupdate-${{ matrix.build.NAME }}.tar.xz > appimageupdate-${{ matrix.build.NAME }}.tar.xz.b3sum
+
+      - name: Upload to release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: appimageupdate-${{ matrix.build.NAME }}*
+          file_glob: true
+          overwrite: true
+          tag: ${{ github.ref }}
+
+      - name: Attest Build Provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: "appimageupdate-${{ matrix.build.NAME }}"
+          subject-path: appimageupdate-${{ matrix.build.NAME }}*
