@@ -19,6 +19,9 @@ struct Cli {
     #[arg(short = 'r', long)]
     remove_old: bool,
 
+    #[arg(long, value_name = "DIR")]
+    output_dir: Option<PathBuf>,
+
     #[arg(short = 'u', long, value_name = "INFO")]
     update_info: Option<String>,
 
@@ -28,12 +31,18 @@ struct Cli {
     #[arg(short = 'j', long)]
     check_for_update: bool,
 
-    #[arg(long, value_name = "URL", env = "GITHUB_API_PROXY")]
-    github_api_proxy: Option<String>,
+    #[arg(
+        long,
+        value_name = "URL",
+        env = "GITHUB_API_PROXY",
+        value_delimiter = ','
+    )]
+    github_api_proxy: Vec<String>,
 }
 
 fn main() {
     let cli = Cli::parse();
+    config::init();
 
     if let Err(e) = run(cli) {
         eprintln!("\nError: {}", e);
@@ -58,17 +67,23 @@ fn format_size(bytes: u64) -> String {
 }
 
 fn run(cli: Cli) -> Result<(), Error> {
-    config::init(cli.github_api_proxy);
+    if !cli.github_api_proxy.is_empty() {
+        config::set_proxies(cli.github_api_proxy.clone());
+    }
 
     let path = cli.path.ok_or_else(|| {
         Error::AppImage("No AppImage path provided. Use --help for usage.".into())
     })?;
 
-    let updater = if let Some(ref update_info) = cli.update_info {
+    let mut updater = if let Some(ref update_info) = cli.update_info {
         Updater::with_update_info(&path, update_info)?
     } else {
         Updater::new(&path)?
     };
+
+    if let Some(output_dir) = config::get_output_dir(cli.output_dir) {
+        updater = updater.output_dir(&output_dir);
+    }
 
     if cli.describe {
         let source_path = updater.source_path();
@@ -105,7 +120,6 @@ fn run(cli: Cli) -> Result<(), Error> {
     );
     println!();
 
-    let mut updater = updater;
     if cli.overwrite {
         updater = updater.overwrite(true);
     }
@@ -136,7 +150,9 @@ fn run(cli: Cli) -> Result<(), Error> {
         println!();
         println!("Updated: {}", new_path.display());
 
-        if cli.remove_old && new_path != source_path {
+        let remove_old = config::get_remove_old(if cli.remove_old { Some(true) } else { None });
+
+        if remove_old && new_path != source_path {
             std::fs::remove_file(source_path)?;
             println!("Removed old AppImage");
         }

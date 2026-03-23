@@ -1,26 +1,124 @@
+use std::path::PathBuf;
 use std::sync::OnceLock;
 
-static GITHUB_API_PROXIES: OnceLock<Vec<String>> = OnceLock::new();
+use serde::Deserialize;
 
-pub fn init(proxies: Option<String>) {
-    let proxies = proxies
-        .or_else(|| std::env::var("GITHUB_API_PROXY").ok())
-        .map(|s| {
-            s.split(',')
-                .map(|s| s.trim().to_string())
-                .filter(|s| !s.is_empty())
-                .collect()
-        })
-        .unwrap_or_default();
-
-    let _ = GITHUB_API_PROXIES.set(proxies);
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+pub enum StringOrVec {
+    String(String),
+    Vec(Vec<String>),
 }
 
-pub fn get_proxies() -> &'static [String] {
-    GITHUB_API_PROXIES
-        .get()
-        .map(|v| v.as_slice())
-        .unwrap_or(&[])
+impl Default for StringOrVec {
+    fn default() -> Self {
+        StringOrVec::Vec(Vec::new())
+    }
+}
+
+impl StringOrVec {
+    fn to_vec(&self) -> Vec<String> {
+        match self {
+            StringOrVec::String(s) => parse_proxies(s),
+            StringOrVec::Vec(v) => v.clone(),
+        }
+    }
+}
+
+#[derive(Debug, Default, Deserialize)]
+pub struct Config {
+    pub github_api_proxy: Option<StringOrVec>,
+    pub remove_old: Option<bool>,
+    pub output_dir: Option<PathBuf>,
+}
+
+static CONFIG: OnceLock<Config> = OnceLock::new();
+static PROXIES: OnceLock<Vec<String>> = OnceLock::new();
+
+pub fn init() {
+    let config = load_config();
+    let _ = CONFIG.set(config);
+}
+
+pub fn set_proxies(proxies: Vec<String>) {
+    if !proxies.is_empty() {
+        let _ = PROXIES.set(proxies);
+    }
+}
+
+pub fn get() -> &'static Config {
+    static DEFAULT: Config = Config {
+        github_api_proxy: None,
+        remove_old: None,
+        output_dir: None,
+    };
+    CONFIG.get().unwrap_or(&DEFAULT)
+}
+
+fn load_config() -> Config {
+    let config_path = dirs::config_dir().map(|p| p.join("appimageupdate").join("config.toml"));
+
+    let config_path = match config_path {
+        Some(p) if p.exists() => p,
+        _ => return Config::default(),
+    };
+
+    match std::fs::read_to_string(&config_path) {
+        Ok(content) => toml::from_str(&content).unwrap_or_default(),
+        Err(_) => Config::default(),
+    }
+}
+
+pub fn get_proxies() -> Vec<String> {
+    if let Some(proxies) = PROXIES.get() {
+        return proxies.clone();
+    }
+
+    if let Ok(s) = std::env::var("GITHUB_API_PROXY") {
+        return parse_proxies(&s);
+    }
+
+    get()
+        .github_api_proxy
+        .as_ref()
+        .map(|v| v.to_vec())
+        .unwrap_or_default()
+}
+
+pub fn get_remove_old(cli_value: Option<bool>) -> bool {
+    if let Some(v) = cli_value {
+        return v;
+    }
+    if let Ok(v) = std::env::var("APPIMAGEUPDATE_REMOVE_OLD")
+        && let Ok(b) = v.parse::<bool>()
+    {
+        return b;
+    }
+    get().remove_old.unwrap_or(false)
+}
+
+pub fn get_output_dir(cli_value: Option<PathBuf>) -> Option<PathBuf> {
+    if let Some(dir) = cli_value {
+        return Some(expand_path(&dir.to_string_lossy()));
+    }
+    if let Ok(dir) = std::env::var("APPIMAGEUPDATE_OUTPUT_DIR") {
+        return Some(expand_path(&dir));
+    }
+    get()
+        .output_dir
+        .as_ref()
+        .map(|p| expand_path(&p.to_string_lossy()))
+}
+
+fn expand_path(s: &str) -> PathBuf {
+    PathBuf::from(shellexpand::full(s).unwrap_or_default().into_owned())
+}
+
+fn parse_proxies(s: &str) -> Vec<String> {
+    s.split(',')
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect()
 }
 
 pub fn build_api_url(path: &str, proxy: Option<&str>) -> String {

@@ -65,7 +65,7 @@ impl GitHubUpdateInfo {
             return self.fetch_release_url(&api_path, None);
         }
 
-        for proxy in proxies {
+        for proxy in &proxies {
             match self.fetch_release_url(&api_path, Some(proxy)) {
                 Ok(url) => return Ok(url),
                 Err(e) => last_error = Some(e),
@@ -79,7 +79,7 @@ impl GitHubUpdateInfo {
         let api_url = config::build_api_url(api_path, proxy);
 
         let response = ureq::get(&api_url)
-            .header("User-Agent", "appimageupdate-rs")
+            .header("User-Agent", "pkgforge-dev/appimageupdate")
             .call()
             .map_err(|e| Error::Http(format!("GitHub API request failed: {}", e)))?;
 
