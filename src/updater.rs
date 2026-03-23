@@ -125,22 +125,11 @@ impl Updater {
 
     pub fn check_for_update(&self) -> Result<bool> {
         let (control, _zsync_url) = self.fetch_control_file()?;
-        let output_path = self.resolve_output_path(&control)?;
 
-        if output_path.exists() {
-            if let Some(ref expected_sha1) = control.sha1
-                && self.verify_existing_file(&output_path, expected_sha1)?
-            {
-                return Ok(false);
-            }
-
-            let same_file = self.appimage.path() == output_path;
-            if !same_file && !self.overwrite {
-                return Err(Error::AppImage(format!(
-                    "Output file already exists: {}",
-                    output_path.display()
-                )));
-            }
+        if let Some(ref expected_sha1) = control.sha1
+            && self.verify_existing_file(self.appimage.path(), expected_sha1)?
+        {
+            return Ok(false);
         }
 
         Ok(true)

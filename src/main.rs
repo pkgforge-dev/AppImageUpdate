@@ -105,6 +105,11 @@ fn run(cli: Cli) -> Result<(), Error> {
 
     if cli.check_for_update {
         let has_update = updater.check_for_update()?;
+        if has_update {
+            println!("Update available");
+        } else {
+            println!("Up to date");
+        }
         std::process::exit(if has_update { 1 } else { 0 });
     }
 
