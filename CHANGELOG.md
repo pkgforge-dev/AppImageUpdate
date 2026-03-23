@@ -1,4 +1,11 @@
 
+## [0.1.1](https://github.com/pkgforge-dev/AppImageUpdate/compare/0.1.0...0.1.1) - 2026-03-23
+
+### 🐛 Bug Fixes
+
+- Compare SHA1 of source file in check_for_update - ([6f46a5b](https://github.com/pkgforge-dev/AppImageUpdate/commit/6f46a5bf4bbc68dd93a2d4a3c3d637231d1f8102))
+- Make -O flag overwrite source file in-place - ([6644b33](https://github.com/pkgforge-dev/AppImageUpdate/commit/6644b3306c22a4ce40bc1096cf2a07c2906752f7))
+
 ## [0.1.0] - 2026-03-23
 
 ### ⛰️  Features
