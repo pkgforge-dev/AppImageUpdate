@@ -9,6 +9,7 @@ A Rust implementation of AppImageUpdate - a tool for updating AppImages using ef
 - **Checksum Verification** - SHA1 verification ensures downloaded files are valid
 - **Permission Preservation** - Maintains executable permissions from the original AppImage
 - **Skip Unnecessary Updates** - Automatically skips update if the target file already exists with the correct checksum
+- **In-Place Updates** - Updates to same filename preserve old version as `.old` backup
 
 ## Installation
 
@@ -25,7 +26,7 @@ cargo install --path .
 ### Update an AppImage
 
 ```bash
-appimageupdate update ./myapp.AppImage
+appimageupdate ./myapp.AppImage
 ```
 
 Output:
@@ -45,29 +46,44 @@ Updated: ./myapp-2.0.AppImage
 ### Check for Updates
 
 ```bash
-appimageupdate check ./myapp.AppImage
+appimageupdate -j ./myapp.AppImage
+```
+
+Exit code 1 if update available, 0 if up to date.
+
+### Describe an AppImage
+
+```bash
+appimageupdate -d ./myapp.AppImage
 ```
 
 Output:
 ```
-Source:   ./myapp.AppImage (85.3 MB)
-Target:   ./myapp-2.0.AppImage (92.1 MB)
-
-Status: Update available
+Path:         ./myapp.AppImage
+Size:         85.3 MB
+Target:       ./myapp-2.0.AppImage
+Target Size:  92.1 MB
+Update Info:  gh-releases-zsync|user|repo|latest|*.AppImage
 ```
 
 ### Options
 
 ```
-appimageupdate update [OPTIONS] <APPIMAGE>
+appimageupdate [OPTIONS] [APPIMAGE]
 
 Arguments:
-  <APPIMAGE>  Path to the AppImage to update
+  [APPIMAGE]              Path to the AppImage to update
 
 Options:
-  -o, --output <DIR>   Output directory for the updated AppImage
-  -w, --overwrite      Overwrite existing target file
-  -h, --help           Print help
+  -O, --overwrite         Overwrite existing target file
+  -r, --remove-old        Remove old AppImage after successful update
+  -u, --update-info <INFO> Override update information in the AppImage
+  -d, --describe          Parse and describe AppImage and its update information
+  -j, --check-for-update  Check for update (exit 1 if available, 0 if not)
+      --github-api-proxy <URL>  GitHub API proxy URL [env: GITHUB_API_PROXY]
+                          (supports comma-separated list for fallback)
+  -h, --help              Print help
+  -V, --version           Print version
 ```
 
 ## How It Works
