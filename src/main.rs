@@ -85,6 +85,10 @@ fn run(cli: Cli) -> Result<(), Error> {
         updater = updater.output_dir(&output_dir);
     }
 
+    if cli.overwrite {
+        updater = updater.overwrite(true);
+    }
+
     if cli.describe {
         let source_path = updater.source_path();
         let source_size = updater.source_size();
@@ -119,10 +123,6 @@ fn run(cli: Cli) -> Result<(), Error> {
         format_size(target_size)
     );
     println!();
-
-    if cli.overwrite {
-        updater = updater.overwrite(true);
-    }
 
     if updater.check_for_update()? {
         println!("Performing delta update...");

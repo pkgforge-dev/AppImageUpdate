@@ -101,6 +101,9 @@ impl Updater {
     }
 
     fn resolve_output_path(&self, control: &ControlFile) -> Result<PathBuf> {
+        if self.overwrite {
+            return Ok(self.appimage.path().to_path_buf());
+        }
         let filename = control
             .filename
             .as_ref()
