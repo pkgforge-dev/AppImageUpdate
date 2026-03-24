@@ -1,4 +1,5 @@
-# appimageupdate
+# AppImageUpdate
+<img src="https://img.shields.io/github/downloads/pkgforge-dev/AppImageUpdate/total" alt="GitHub Downloads (all assets, all releases)"> <img src="https://img.shields.io/github/v/release/pkgforge-dev/AppImageUpdate" alt="GitHub Release"> <img src="https://img.shields.io/github/release-date/pkgforge-dev/AppImageUpdate" alt="GitHub Release Date">
 
 A Rust implementation of AppImageUpdate - a tool for updating AppImages using efficient delta updates.
 
@@ -16,7 +17,7 @@ A Rust implementation of AppImageUpdate - a tool for updating AppImages using ef
 ### From Source
 
 ```bash
-git clone https://github.com/qaidvoid/appimageupdate.git
+git clone https://github.com/pkgforge-dev/appimageupdate.git
 cd appimageupdate
 cargo install --path .
 ```
@@ -132,14 +133,17 @@ output_dir = "~/Applications"
 This is a Rust rewrite of the upstream [AppImageUpdate](https://github.com/AppImage/AppImageUpdate) (C++/Qt).
 
 Advantages:
-- Single binary with no runtime dependencies
+- Single static binary with no runtime dependencies
+- Over 10x smaller
 - Cleaner, more maintainable codebase
 - URL caching to avoid redundant API calls
+- Proxy support
 - Better error messages
 
 Differences:
 - No GPG signature verification (not implemented)
 - No pling integration (not implemented)
+- No GUI (not implemented)
 
 ## Library Usage
 
