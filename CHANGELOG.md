@@ -1,4 +1,20 @@
 
+## [0.2.0](https://github.com/pkgforge-dev/AppImageUpdate/compare/0.1.1...0.2.0) - 2026-03-24
+
+### ⛰️  Features
+
+- Add progress display during updates - ([90233e1](https://github.com/pkgforge-dev/AppImageUpdate/commit/90233e1b05d2e68a998cec4a383f992b453496d1))
+- Add support for updating multiple AppImages at once - ([c59368d](https://github.com/pkgforge-dev/AppImageUpdate/commit/c59368d4e81df1e31c0a3be57d42bcdb07baa1ae))
+- Add global and portable config file support ([#5](https://github.com/pkgforge-dev/AppImageUpdate/pull/5)) - ([2db70c8](https://github.com/pkgforge-dev/AppImageUpdate/commit/2db70c8b35eeb950ee3aa87860d0eb67db0f8466))
+
+### 🐛 Bug Fixes
+
+- Handle backup file removal - ([73d4ba5](https://github.com/pkgforge-dev/AppImageUpdate/commit/73d4ba5cf6d711418cbafca744dcb002c01b6489))
+
+### 📚 Documentation
+
+- Update README ([#4](https://github.com/pkgforge-dev/AppImageUpdate/pull/4)) - ([0c72d84](https://github.com/pkgforge-dev/AppImageUpdate/commit/0c72d84d3b7a18c2f759204ae7a5241d2778f9f5))
+
 ## [0.1.1](https://github.com/pkgforge-dev/AppImageUpdate/compare/0.1.0...0.1.1) - 2026-03-23
 
 ### 🐛 Bug Fixes
