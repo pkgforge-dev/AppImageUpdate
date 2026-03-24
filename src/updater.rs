@@ -6,6 +6,7 @@ use zsync_rs::{ControlFile, ZsyncAssembly};
 use crate::appimage::AppImage;
 use crate::error::{Error, Result};
 use crate::update_info::UpdateInfo;
+use crate::util::format_size;
 
 struct UpdateContext {
     source_size: u64,
@@ -238,10 +239,20 @@ impl Updater {
         zsync_url: &str,
         ctx: &UpdateContext,
     ) -> Result<UpdateStats> {
-        let assembly = ZsyncAssembly::from_url(zsync_url, output_path)
+        let mut assembly = ZsyncAssembly::from_url(zsync_url, output_path)
             .map_err(|e| Error::Zsync(format!("Failed to initialize zsync: {}", e)))?;
 
-        let mut assembly = assembly;
+        assembly.set_progress_callback(|done, total| {
+            let percent = total.checked_div(100).map(|p| done / p).unwrap_or(0);
+            print!(
+                "\rProgress: {:3}% ({}/{})",
+                percent,
+                format_size(done),
+                format_size(total)
+            );
+            use std::io::Write;
+            std::io::stdout().flush().ok();
+        });
 
         let blocks_reused = assembly
             .submit_source_file(source_path)
@@ -255,6 +266,8 @@ impl Updater {
         let blocks_downloaded = assembly
             .download_missing_blocks()
             .map_err(|e| Error::Zsync(format!("Failed to download blocks: {}", e)))?;
+
+        println!();
 
         assembly
             .complete()

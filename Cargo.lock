@@ -873,9 +873,9 @@ checksum = "b8848ee67ecc8aedbaf3e4122217aff892639231befc6a1b58d29fff4c2cabaa"
 
 [[package]]
 name = "zsync-rs"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9b176cacede1b3183e151d71a831b10b81a6fb100309925042f153346d807dcc"
+checksum = "d04e5f4bacdbae290f03a4268122ad4ffc44d07eb3200914d40d76075ba05da2"
 dependencies = [
  "clap",
  "md4",
