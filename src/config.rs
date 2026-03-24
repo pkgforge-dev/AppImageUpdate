@@ -56,17 +56,39 @@ pub fn get() -> &'static Config {
 }
 
 fn load_config() -> Config {
-    let config_path = dirs::config_dir().map(|p| p.join("appimageupdate").join("config.toml"));
-
-    let config_path = match config_path {
-        Some(p) if p.exists() => p,
-        _ => return Config::default(),
-    };
-
-    match std::fs::read_to_string(&config_path) {
-        Ok(content) => toml::from_str(&content).unwrap_or_default(),
-        Err(_) => Config::default(),
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(dir) = exe.parent() {
+            let portable = dir.join("config.toml");
+            if portable.exists() {
+                if let Ok(content) = std::fs::read_to_string(&portable) {
+                    if let Ok(config) = toml::from_str(&content) {
+                        return config;
+                    }
+                }
+            }
+        }
     }
+
+    if let Some(user_config) = dirs::config_dir().map(|p| p.join("appimageupdate").join("config.toml")) {
+        if user_config.exists() {
+            if let Ok(content) = std::fs::read_to_string(&user_config) {
+                if let Ok(config) = toml::from_str(&content) {
+                    return config;
+                }
+            }
+        }
+    }
+
+    let global_config = PathBuf::from("/etc/appimageupdate/config.toml");
+    if global_config.exists() {
+        if let Ok(content) = std::fs::read_to_string(&global_config) {
+            if let Ok(config) = toml::from_str(&content) {
+                return config;
+            }
+        }
+    }
+
+    Config::default()
 }
 
 pub fn get_proxies() -> Vec<String> {
