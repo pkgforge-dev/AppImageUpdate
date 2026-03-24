@@ -56,39 +56,32 @@ pub fn get() -> &'static Config {
 }
 
 fn load_config() -> Config {
-    if let Ok(exe) = std::env::current_exe() {
-        if let Some(dir) = exe.parent() {
-            let portable = dir.join("config.toml");
-            if portable.exists() {
-                if let Ok(content) = std::fs::read_to_string(&portable) {
-                    if let Ok(config) = toml::from_str(&content) {
-                        return config;
-                    }
-                }
-            }
-        }
-    }
+    let portable = std::env::current_exe()
+        .ok()
+        .and_then(|exe| exe.parent().map(|dir| dir.join("config.toml")));
 
-    if let Some(user_config) = dirs::config_dir().map(|p| p.join("appimageupdate").join("config.toml")) {
-        if user_config.exists() {
-            if let Ok(content) = std::fs::read_to_string(&user_config) {
-                if let Ok(config) = toml::from_str(&content) {
-                    return config;
-                }
-            }
-        }
-    }
+    let user_config = dirs::config_dir().map(|p| p.join("appimageupdate").join("config.toml"));
 
     let global_config = PathBuf::from("/etc/appimageupdate/config.toml");
-    if global_config.exists() {
-        if let Ok(content) = std::fs::read_to_string(&global_config) {
-            if let Ok(config) = toml::from_str(&content) {
-                return config;
-            }
+
+    for path in portable
+        .iter()
+        .chain(user_config.iter())
+        .chain(Some(&global_config))
+    {
+        if let Some(config) = try_load_config(path) {
+            return config;
         }
     }
 
     Config::default()
+}
+
+fn try_load_config(path: &PathBuf) -> Option<Config> {
+    path.exists()
+        .then(|| std::fs::read_to_string(path).ok())
+        .flatten()
+        .and_then(|content| toml::from_str(&content).ok())
 }
 
 pub fn get_proxies() -> Vec<String> {
