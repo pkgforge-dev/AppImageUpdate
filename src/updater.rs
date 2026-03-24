@@ -23,6 +23,7 @@ pub struct UpdateStats {
     pub blocks_reused: usize,
     pub blocks_downloaded: usize,
     pub block_size: usize,
+    pub backup_path: Option<PathBuf>,
 }
 
 impl UpdateStats {
@@ -171,6 +172,7 @@ impl Updater {
                     blocks_reused: 0,
                     blocks_downloaded: 0,
                     block_size: control.blocksize,
+                    backup_path: None,
                 };
                 return Ok((output_path, stats));
             }
@@ -212,7 +214,10 @@ impl Updater {
         let result = self.do_update(&actual_source_path, &output_path, &zsync_url, &ctx);
 
         match result {
-            Ok(stats) => Ok((output_path, stats)),
+            Ok(mut stats) => {
+                stats.backup_path = backup_path;
+                Ok((output_path, stats))
+            }
             Err(e) => {
                 if let Some(backup) = backup_path {
                     let _ = fs::rename(&backup, source_path);
@@ -263,6 +268,7 @@ impl Updater {
             blocks_reused,
             blocks_downloaded,
             block_size: ctx.block_size,
+            backup_path: None,
         })
     }
 
