@@ -150,6 +150,10 @@ impl Updater {
         self.update_info.raw()
     }
 
+    pub fn zsync_url(&self) -> Result<String> {
+        self.update_info.zsync_url()
+    }
+
     pub fn target_info(&self) -> Result<(PathBuf, u64)> {
         let (control, _zsync_url) = self.fetch_control_file()?;
         let output_path = self.resolve_output_path(&control)?;

@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+use std::fs;
 use std::path::PathBuf;
 
 use appimageupdate::config;
@@ -9,8 +11,8 @@ use clap::Parser;
 #[command(about = "AppImage companion tool taking care of updates for the commandline.", long_about = None)]
 #[command(version)]
 struct Cli {
-    #[arg(value_name = "APPIMAGE")]
-    path: Option<PathBuf>,
+    #[arg(value_name = "APPIMAGE", num_args(1..))]
+    paths: Vec<PathBuf>,
 
     #[arg(short = 'O', long)]
     overwrite: bool,
@@ -69,20 +71,129 @@ fn run(cli: Cli) -> Result<(), Error> {
     if !cli.github_api_proxy.is_empty() {
         config::set_proxies(cli.github_api_proxy.clone());
     }
-    let path = cli.path.ok_or_else(|| {
-        Error::AppImage("No AppImage path provided. Use --help for usage.".into())
-    })?;
-    let mut updater = if let Some(ref update_info) = cli.update_info {
-        Updater::with_update_info(&path, update_info)?
-    } else {
-        Updater::new(&path)?
+    if cli.paths.is_empty() {
+        return Err(Error::AppImage(
+            "No AppImage path provided. Use --help for usage.".into(),
+        ));
+    }
+    let appimages = collect_appimages(&cli.paths)?;
+    if appimages.is_empty() {
+        return Err(Error::AppImage("No AppImages found.".into()));
+    }
+
+    let mut groups: HashMap<String, Vec<PathBuf>> = HashMap::new();
+    let mut ungrouped: Vec<PathBuf> = Vec::new();
+
+    for path in &appimages {
+        if let Ok(updater) = create_updater(&cli, path)
+            && let Ok(zsync_url) = updater.zsync_url()
+        {
+            groups.entry(zsync_url).or_default().push(path.clone());
+            continue;
+        }
+        ungrouped.push(path.clone());
+    }
+
+    let mut errors = Vec::new();
+    let mut updated_files: HashMap<String, PathBuf> = HashMap::new();
+
+    for (zsync_url, paths) in &groups {
+        if paths.len() > 1 {
+            println!(
+                "\n=== Group ({} AppImages, same update source) ===",
+                paths.len()
+            );
+        }
+        for path in paths {
+            if appimages.len() > 1 {
+                println!("\n=== {} ===", path.display());
+            }
+            if let Err(e) = handle_appimage(&cli, path, zsync_url, &mut updated_files) {
+                eprintln!("Error updating {}: {}", path.display(), e);
+                errors.push(path.clone());
+            }
+        }
+    }
+
+    for path in &ungrouped {
+        println!("\n=== {} ===", path.display());
+        if let Err(e) = handle_appimage(&cli, path, "", &mut updated_files) {
+            eprintln!("Error updating {}: {}", path.display(), e);
+            errors.push(path.clone());
+        }
+    }
+
+    if !errors.is_empty() {
+        eprintln!("\nFailed to update {} AppImage(s)", errors.len());
+        std::process::exit(1);
+    }
+    Ok(())
+}
+
+fn collect_appimages(paths: &[PathBuf]) -> Result<Vec<PathBuf>, Error> {
+    let mut appimages = Vec::new();
+    for path in paths {
+        if path.is_dir() {
+            for entry in fs::read_dir(path)? {
+                let entry = entry?;
+                let entry_path = entry.path();
+                if entry_path.is_file() && is_appimage(&entry_path) {
+                    appimages.push(entry_path);
+                }
+            }
+        } else if path.is_file() {
+            appimages.push(path.clone());
+        } else {
+            return Err(Error::AppImage(format!(
+                "Path does not exist: {}",
+                path.display()
+            )));
+        }
+    }
+    appimages.sort();
+    appimages.dedup();
+    Ok(appimages)
+}
+
+fn is_appimage(path: &PathBuf) -> bool {
+    use std::fs::File;
+    use std::io::{Read, Seek, SeekFrom};
+
+    let Ok(mut file) = File::open(path) else {
+        return false;
     };
-    if let Some(output_dir) = config::get_output_dir(cli.output_dir) {
+    let mut magic = [0u8; 3];
+    if file.seek(SeekFrom::Start(8)).is_err() {
+        return false;
+    }
+    if file.read_exact(&mut magic).is_err() {
+        return false;
+    }
+    &magic[0..2] == b"AI" && (magic[2] == 1 || magic[2] == 2)
+}
+
+fn create_updater(cli: &Cli, path: &PathBuf) -> Result<Updater, Error> {
+    if let Some(ref update_info) = cli.update_info {
+        Updater::with_update_info(path, update_info)
+    } else {
+        Updater::new(path)
+    }
+}
+
+fn handle_appimage(
+    cli: &Cli,
+    path: &PathBuf,
+    zsync_url: &str,
+    updated_files: &mut HashMap<String, PathBuf>,
+) -> Result<(), Error> {
+    let mut updater = create_updater(cli, path)?;
+    if let Some(output_dir) = config::get_output_dir(cli.output_dir.clone()) {
         updater = updater.output_dir(&output_dir);
     }
     if cli.overwrite {
         updater = updater.overwrite(true);
     }
+
     if cli.describe {
         let source_path = updater.source_path();
         let source_size = updater.source_size();
@@ -94,6 +205,7 @@ fn run(cli: Cli) -> Result<(), Error> {
         println!("Update Info:  {}", updater.update_info());
         return Ok(());
     }
+
     if cli.check_for_update {
         let has_update = updater.check_for_update()?;
         if has_update {
@@ -103,6 +215,7 @@ fn run(cli: Cli) -> Result<(), Error> {
         }
         std::process::exit(if has_update { 1 } else { 0 });
     }
+
     let source_path = updater.source_path().to_path_buf();
     let source_size = updater.source_size();
     let (target_path, target_size) = updater.target_info()?;
@@ -117,41 +230,71 @@ fn run(cli: Cli) -> Result<(), Error> {
         format_size(target_size)
     );
     println!();
-    if updater.check_for_update()? {
-        println!("Performing delta update...");
-        let (new_path, stats) = updater.perform_update()?;
-        if stats.blocks_reused > 0 || stats.blocks_downloaded > 0 {
-            println!();
-            println!(
-                "Reused:      {:>10}  ({} blocks)",
-                format_size(stats.bytes_reused()),
-                stats.blocks_reused
-            );
-            println!(
-                "Downloaded:  {:>10}  ({} blocks)",
-                format_size(stats.bytes_downloaded()),
-                stats.blocks_downloaded
-            );
-            println!(
-                "Saved:       {:>10}  ({}%)",
-                format_size(stats.bytes_reused()),
-                stats.saved_percentage()
-            );
-        }
-        println!();
-        println!("Updated: {}", new_path.display());
-        let remove_old = config::get_remove_old(if cli.remove_old { Some(true) } else { None });
-        if remove_old {
-            if let Some(ref backup) = stats.backup_path {
-                std::fs::remove_file(backup)?;
-                println!("Removed old AppImage");
-            } else if new_path != source_path {
-                std::fs::remove_file(source_path)?;
+
+    if !updater.check_for_update()? {
+        println!("Already up to date!");
+        return Ok(());
+    }
+
+    if let Some(existing) = updated_files
+        .get(zsync_url)
+        .filter(|_| !zsync_url.is_empty())
+    {
+        if existing == &target_path {
+            println!("Already updated (same target)");
+        } else {
+            println!("Copying from {}...", existing.display());
+            let perms = fs::metadata(&source_path).ok().map(|m| m.permissions());
+            fs::copy(existing, &target_path)?;
+            if let Some(perms) = perms {
+                fs::set_permissions(&target_path, perms)?;
+            }
+            println!("Updated: {}", target_path.display());
+            let remove_old = config::get_remove_old(if cli.remove_old { Some(true) } else { None });
+            if remove_old && target_path != source_path {
+                fs::remove_file(&source_path)?;
                 println!("Removed old AppImage");
             }
         }
-    } else {
-        println!("Already up to date!");
+        return Ok(());
+    }
+
+    println!("Performing delta update...");
+    let (new_path, stats) = updater.perform_update()?;
+    if stats.blocks_reused > 0 || stats.blocks_downloaded > 0 {
+        println!();
+        println!(
+            "Reused:      {:>10}  ({} blocks)",
+            format_size(stats.bytes_reused()),
+            stats.blocks_reused
+        );
+        println!(
+            "Downloaded:  {:>10}  ({} blocks)",
+            format_size(stats.bytes_downloaded()),
+            stats.blocks_downloaded
+        );
+        println!(
+            "Saved:       {:>10}  ({}%)",
+            format_size(stats.bytes_reused()),
+            stats.saved_percentage()
+        );
+    }
+    println!();
+    println!("Updated: {}", new_path.display());
+
+    if !zsync_url.is_empty() {
+        updated_files.insert(zsync_url.to_string(), new_path.clone());
+    }
+
+    let remove_old = config::get_remove_old(if cli.remove_old { Some(true) } else { None });
+    if remove_old {
+        if let Some(ref backup) = stats.backup_path {
+            fs::remove_file(backup)?;
+            println!("Removed old AppImage");
+        } else if new_path != source_path {
+            fs::remove_file(&source_path)?;
+            println!("Removed old AppImage");
+        }
     }
     Ok(())
 }
