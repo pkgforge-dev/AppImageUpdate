@@ -56,31 +56,27 @@ pub fn get() -> &'static Config {
 }
 
 fn load_config() -> Config {
-    let portable = std::env::current_exe()
-        .ok()
-        .and_then(|exe| exe.parent().map(|dir| dir.join("config.toml")));
+    let portable = std::env::current_exe().ok().and_then(|exe| {
+        let dir = exe.parent()?;
+        let name = exe.file_stem()?.to_str()?;
+        Some(dir.join(format!("{name}.toml")))
+    });
 
-    let user_config = dirs::config_dir().map(|p| p.join("appimageupdate").join("config.toml"));
+    let user = dirs::config_dir().map(|p| p.join("appimageupdate/config.toml"));
 
-    let global_config = PathBuf::from("/etc/appimageupdate/config.toml");
+    let global = Some(PathBuf::from("/etc/appimageupdate/config.toml"));
 
-    for path in portable
-        .iter()
-        .chain(user_config.iter())
-        .chain(Some(&global_config))
-    {
-        if let Some(config) = try_load_config(path) {
-            return config;
-        }
-    }
-
-    Config::default()
+    portable
+        .into_iter()
+        .chain(user)
+        .chain(global)
+        .find_map(try_load_config)
+        .unwrap_or_default()
 }
 
-fn try_load_config(path: &PathBuf) -> Option<Config> {
-    path.exists()
-        .then(|| std::fs::read_to_string(path).ok())
-        .flatten()
+fn try_load_config(path: PathBuf) -> Option<Config> {
+    std::fs::read_to_string(&path)
+        .ok()
         .and_then(|content| toml::from_str(&content).ok())
 }
 
