@@ -7,6 +7,10 @@ A Rust implementation of AppImageUpdate - a tool for updating AppImages using ef
 
 - **Delta Updates** - Only download the changed portions of the AppImage, saving bandwidth and time
 - **Decentralized** - No central repository required; updates come directly from the source
+- **Multiple AppImages** - Update or check multiple AppImages at once
+- **Directory Scanning** - Pass a directory to update all AppImages inside
+- **Smart Grouping** - AppImages with the same update source share downloads
+- **Progress Display** - Real-time progress during updates
 - **Checksum Verification** - SHA1 verification ensures downloaded files are valid
 - **Permission Preservation** - Maintains executable permissions from the original AppImage
 - **Skip Unnecessary Updates** - Automatically skips update if the target file already exists with the correct checksum
@@ -36,6 +40,7 @@ Source:   ./myapp.AppImage (85.3 MB)
 Target:   ./myapp-2.0.AppImage (92.1 MB)
 
 Performing delta update...
+Progress: 100% (92.1/92.1 MB)
 
 Reused:        42.1 MB  (1247 blocks)
 Downloaded:    50.0 MB  (1482 blocks)
@@ -44,13 +49,38 @@ Saved:         42.1 MB  (45%)
 Updated: ./myapp-2.0.AppImage
 ```
 
+### Update Multiple AppImages
+
+```bash
+appimageupdate ./app1.AppImage ./app2.AppImage ./app3.AppImage
+```
+
+### Update All AppImages in a Directory
+
+```bash
+appimageupdate ~/Applications/
+```
+
 ### Check for Updates
 
+Check a single AppImage:
 ```bash
 appimageupdate -j ./myapp.AppImage
 ```
 
-Exit code 1 if update available, 0 if up to date.
+Check multiple AppImages:
+```bash
+appimageupdate -j ~/Applications/
+```
+
+Output:
+```
+Checking: /home/user/Applications/app1.AppImage ... Update available
+Checking: /home/user/Applications/app2.AppImage ... Up to date
+Checking: /home/user/Applications/app3.AppImage ... Update available
+```
+
+Exit code 1 if any update available, 0 if all up to date.
 
 ### Describe an AppImage
 
@@ -70,10 +100,10 @@ Update Info:  gh-releases-zsync|user|repo|latest|*.AppImage
 ### Options
 
 ```
-appimageupdate [OPTIONS] [APPIMAGE]
+appimageupdate [OPTIONS] [APPIMAGE]...
 
 Arguments:
-  [APPIMAGE]              Path to the AppImage to update
+  [APPIMAGE]...           Path(s) to AppImage(s) or directories to update
 
 Options:
   -O, --overwrite         Overwrite existing target file
@@ -81,7 +111,7 @@ Options:
   -u, --update-info <INFO> Override update information in the AppImage
       --output-dir <DIR>  Output directory for updated AppImages
   -d, --describe          Parse and describe AppImage and its update information
-  -j, --check-for-update  Check for update (exit 1 if available, 0 if not)
+  -j, --check-for-update  Check for update (exit 1 if any available, 0 if not)
       --github-api-proxy <URL>  GitHub API proxy URL [env: GITHUB_API_PROXY]
                            (supports comma-separated list for fallback)
   -h, --help              Print help
