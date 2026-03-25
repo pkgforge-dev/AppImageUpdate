@@ -78,12 +78,13 @@ impl GitHubUpdateInfo {
     fn fetch_release_url(&self, api_path: &str, proxy: Option<&str>) -> Result<String> {
         let api_url = config::build_api_url(api_path, proxy);
 
-        let response = std::env::var("GITHUB_TOKEN")
-            .map_or_else(
-                |_| ureq::get(&api_url),
-                |t| ureq::get(&api_url).header("Authorization", &format!("Bearer {t}"))
-            )
-            .header("User-Agent", "pkgforge-dev/appimageupdate")
+        let mut request = ureq::get(&api_url).header("User-Agent", "pkgforge-dev/appimageupdate");
+
+        if let Ok(token) = std::env::var("GITHUB_TOKEN") {
+            request = request.header("Authorization", &format!("Bearer {token}"));
+        }
+
+        let response = request
             .call()
             .map_err(|e| Error::Http(format!("GitHub API request failed: {}", e)))?;
 
