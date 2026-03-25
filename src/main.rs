@@ -81,19 +81,38 @@ fn run(cli: Cli) -> Result<(), Error> {
 
     let mut errors = Vec::new();
     let mut updated_files: HashMap<String, PathBuf> = HashMap::new();
+    let mut any_update_available = false;
 
     for (zsync_url, paths) in &groups {
-        if paths.len() > 1 {
+        if paths.len() > 1 && !cli.check_for_update {
             println!(
                 "\n=== Group ({} AppImages, same update source) ===",
                 paths.len()
             );
         }
         for path in paths {
-            if appimages.len() > 1 {
+            if appimages.len() > 1 && !cli.check_for_update {
                 println!("\n=== {} ===", path.display());
             }
-            if let Err(e) = handle_appimage(&cli, path, zsync_url, &mut updated_files) {
+            if cli.check_for_update {
+                print!("Checking: {} ... ", path.display());
+                use std::io::Write;
+                std::io::stdout().flush().ok();
+                match check_update(&cli, path) {
+                    Ok(has_update) => {
+                        if has_update {
+                            println!("Update available");
+                            any_update_available = true;
+                        } else {
+                            println!("Up to date");
+                        }
+                    }
+                    Err(e) => {
+                        println!("Error: {}", e);
+                        errors.push(path.clone());
+                    }
+                }
+            } else if let Err(e) = handle_appimage(&cli, path, zsync_url, &mut updated_files) {
                 eprintln!("Error updating {}: {}", path.display(), e);
                 errors.push(path.clone());
             }
@@ -101,11 +120,35 @@ fn run(cli: Cli) -> Result<(), Error> {
     }
 
     for path in &ungrouped {
-        println!("\n=== {} ===", path.display());
-        if let Err(e) = handle_appimage(&cli, path, "", &mut updated_files) {
+        if !cli.check_for_update {
+            println!("\n=== {} ===", path.display());
+        }
+        if cli.check_for_update {
+            print!("Checking: {} ... ", path.display());
+            use std::io::Write;
+            std::io::stdout().flush().ok();
+            match check_update(&cli, path) {
+                Ok(has_update) => {
+                    if has_update {
+                        println!("Update available");
+                        any_update_available = true;
+                    } else {
+                        println!("Up to date");
+                    }
+                }
+                Err(e) => {
+                    println!("Error: {}", e);
+                    errors.push(path.clone());
+                }
+            }
+        } else if let Err(e) = handle_appimage(&cli, path, "", &mut updated_files) {
             eprintln!("Error updating {}: {}", path.display(), e);
             errors.push(path.clone());
         }
+    }
+
+    if cli.check_for_update {
+        std::process::exit(if any_update_available { 1 } else { 0 });
     }
 
     if !errors.is_empty() {
@@ -165,6 +208,11 @@ fn create_updater(cli: &Cli, path: &PathBuf) -> Result<Updater, Error> {
     }
 }
 
+fn check_update(cli: &Cli, path: &PathBuf) -> Result<bool, Error> {
+    let updater = create_updater(cli, path)?;
+    updater.check_for_update()
+}
+
 fn handle_appimage(
     cli: &Cli,
     path: &PathBuf,
@@ -189,16 +237,6 @@ fn handle_appimage(
         println!("Target Size:  {}", format_size(target_size));
         println!("Update Info:  {}", updater.update_info());
         return Ok(());
-    }
-
-    if cli.check_for_update {
-        let has_update = updater.check_for_update()?;
-        if has_update {
-            println!("Update available");
-        } else {
-            println!("Up to date");
-        }
-        std::process::exit(if has_update { 1 } else { 0 });
     }
 
     let source_path = updater.source_path().to_path_buf();

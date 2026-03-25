@@ -20,7 +20,7 @@ shellexpand = "3.1.2"
 thiserror = "2.0.18"
 toml = "1.0.7"
 ureq = "3.3.0"
-zsync-rs = "0.1.1"
+zsync-rs = "0.1.2"
 
 [profile.release]
 opt-level = "z"
