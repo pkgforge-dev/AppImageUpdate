@@ -1,4 +1,11 @@
 
+## [0.2.1](https://github.com/pkgforge-dev/AppImageUpdate/compare/0.2.0...0.2.1) - 2026-03-25
+
+### ⛰️  Features
+
+- Support checking updates for multiple AppImages - ([a50f175](https://github.com/pkgforge-dev/AppImageUpdate/commit/a50f175c8b87163372b2533e8df1d5d7e6affc31))
+- Add `GITHUB_TOKEN` support ([#9](https://github.com/pkgforge-dev/AppImageUpdate/pull/9)) - ([e9247f6](https://github.com/pkgforge-dev/AppImageUpdate/commit/e9247f6d048f19604568768fd54448fa0dcc4673))
+
 ## [0.2.0](https://github.com/pkgforge-dev/AppImageUpdate/compare/0.1.1...0.2.0) - 2026-03-24
 
 ### ⛰️  Features
