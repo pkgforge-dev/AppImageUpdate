@@ -1,12 +1,12 @@
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use zsync_rs::{ControlFile, ZsyncAssembly};
 
 use crate::appimage::AppImage;
 use crate::error::{Error, Result};
 use crate::update_info::UpdateInfo;
-use crate::util::format_size;
 
 struct UpdateContext {
     source_size: u64,
@@ -49,6 +49,7 @@ pub struct Updater {
     update_info: UpdateInfo,
     output_dir: PathBuf,
     overwrite: bool,
+    progress_callback: Option<Arc<dyn Fn(u64, u64) + Send + Sync>>,
 }
 
 impl Updater {
@@ -65,6 +66,7 @@ impl Updater {
             update_info,
             output_dir,
             overwrite: false,
+            progress_callback: None,
         })
     }
 
@@ -80,6 +82,7 @@ impl Updater {
             update_info,
             output_dir,
             overwrite: false,
+            progress_callback: None,
         })
     }
 
@@ -90,6 +93,14 @@ impl Updater {
 
     pub fn overwrite(mut self, overwrite: bool) -> Self {
         self.overwrite = overwrite;
+        self
+    }
+
+    pub fn progress_callback<F>(mut self, callback: F) -> Self
+    where
+        F: Fn(u64, u64) + Send + Sync + 'static,
+    {
+        self.progress_callback = Some(Arc::new(callback));
         self
     }
 
@@ -141,7 +152,7 @@ impl Updater {
         self.appimage.path()
     }
 
-    pub fn source_size(&self) -> u64 {
+    fn source_size(&self) -> u64 {
         fs::metadata(self.appimage.path())
             .map(|m| m.len())
             .unwrap_or(0)
@@ -242,17 +253,10 @@ impl Updater {
         let mut assembly = ZsyncAssembly::from_url(zsync_url, output_path)
             .map_err(|e| Error::Zsync(format!("Failed to initialize zsync: {}", e)))?;
 
-        assembly.set_progress_callback(|done, total| {
-            let percent = total.checked_div(100).map(|p| done / p).unwrap_or(0);
-            print!(
-                "\rProgress: {:3}% ({}/{})",
-                percent,
-                format_size(done),
-                format_size(total)
-            );
-            use std::io::Write;
-            std::io::stdout().flush().ok();
-        });
+        if let Some(ref callback) = self.progress_callback {
+            let callback = callback.clone();
+            assembly.set_progress_callback(move |done, total| callback(done, total));
+        }
 
         let blocks_reused = assembly
             .submit_source_file(source_path)
@@ -266,8 +270,6 @@ impl Updater {
         let blocks_downloaded = assembly
             .download_missing_blocks()
             .map_err(|e| Error::Zsync(format!("Failed to download blocks: {}", e)))?;
-
-        println!();
 
         assembly
             .complete()
@@ -287,14 +289,5 @@ impl Updater {
             block_size: ctx.block_size,
             backup_path: None,
         })
-    }
-
-    pub fn output_path(&self) -> Result<PathBuf> {
-        let (control, _zsync_url) = self.fetch_control_file()?;
-        self.resolve_output_path(&control)
-    }
-
-    pub fn progress(&self) -> Option<(u64, u64)> {
-        None
     }
 }

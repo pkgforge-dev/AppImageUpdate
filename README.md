@@ -6,11 +6,10 @@ A Rust implementation of AppImageUpdate - a tool for updating AppImages using ef
 ## Features
 
 - **Delta Updates** - Only download the changed portions of the AppImage, saving bandwidth and time
+- **Parallel Updates** - Update multiple AppImages concurrently with per-URL deduplication
 - **Decentralized** - No central repository required; updates come directly from the source
-- **Multiple AppImages** - Update or check multiple AppImages at once
 - **Directory Scanning** - Pass a directory to update all AppImages inside
-- **Smart Grouping** - AppImages with the same update source share downloads
-- **Progress Display** - Real-time progress during updates
+- **Progress Bars** - Real-time progress during downloads with per-file bars
 - **Checksum Verification** - SHA1 verification ensures downloaded files are valid
 - **Permission Preservation** - Maintains executable permissions from the original AppImage
 - **Skip Unnecessary Updates** - Automatically skips update if the target file already exists with the correct checksum
@@ -34,26 +33,20 @@ cargo install --path .
 appimageupdate ./myapp.AppImage
 ```
 
-Output:
-```
-Source:   ./myapp.AppImage (85.3 MB)
-Target:   ./myapp-2.0.AppImage (92.1 MB)
-
-Performing delta update...
-Progress: 100% (92.1/92.1 MB)
-
-Reused:        42.1 MB  (1247 blocks)
-Downloaded:    50.0 MB  (1482 blocks)
-Saved:         42.1 MB  (45%)
-
-Updated: ./myapp-2.0.AppImage
-```
-
-### Update Multiple AppImages
+### Update Multiple AppImages in Parallel
 
 ```bash
 appimageupdate ./app1.AppImage ./app2.AppImage ./app3.AppImage
 ```
+
+AppImages are updated concurrently. When multiple AppImages share the same update source, the download happens only once and the result is copied to the rest.
+
+Control parallelism with `-J`:
+```bash
+appimageupdate -J 4 ~/Applications/
+```
+
+Use `0` (default) to auto-detect based on CPU count.
 
 ### Update All AppImages in a Directory
 
@@ -63,21 +56,13 @@ appimageupdate ~/Applications/
 
 ### Check for Updates
 
-Check a single AppImage:
 ```bash
 appimageupdate -j ./myapp.AppImage
 ```
 
-Check multiple AppImages:
+Check multiple AppImages in parallel:
 ```bash
 appimageupdate -j ~/Applications/
-```
-
-Output:
-```
-Checking: /home/user/Applications/app1.AppImage ... Update available
-Checking: /home/user/Applications/app2.AppImage ... Up to date
-Checking: /home/user/Applications/app3.AppImage ... Update available
 ```
 
 Exit code 1 if any update available, 0 if all up to date.
@@ -86,15 +71,6 @@ Exit code 1 if any update available, 0 if all up to date.
 
 ```bash
 appimageupdate -d ./myapp.AppImage
-```
-
-Output:
-```
-Path:         ./myapp.AppImage
-Size:         85.3 MB
-Target:       ./myapp-2.0.AppImage
-Target Size:  92.1 MB
-Update Info:  gh-releases-zsync|user|repo|latest|*.AppImage
 ```
 
 ### Options
@@ -112,8 +88,9 @@ Options:
       --output-dir <DIR>  Output directory for updated AppImages
   -d, --describe          Parse and describe AppImage and its update information
   -j, --check-for-update  Check for update (exit 1 if any available, 0 if not)
+  -J, --jobs <N>          Number of parallel jobs (default: 0 = auto-detect)
       --github-api-proxy <URL>  GitHub API proxy URL [env: GITHUB_API_PROXY]
-                           (supports comma-separated list for fallback)
+                            (supports comma-separated list for fallback)
   -h, --help              Print help
   -V, --version           Print version
 ```
@@ -181,7 +158,12 @@ Differences:
 use appimageupdate::{Updater, Error};
 
 fn main() -> Result<(), Error> {
-    let updater = Updater::new("./myapp.AppImage")?;
+    let updater = Updater::new("./myapp.AppImage")?
+        .progress_callback(|done, total| {
+            if total > 0 {
+                eprintln!("Progress: {}/{}", done, total);
+            }
+        });
 
     if updater.check_for_update()? {
         let (path, stats) = updater.perform_update()?;
