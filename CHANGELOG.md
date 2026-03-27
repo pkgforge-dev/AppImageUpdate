@@ -1,4 +1,14 @@
 
+## [0.3.0](https://github.com/pkgforge-dev/AppImageUpdate/compare/0.2.1...0.3.0) - 2026-03-27
+
+### ⛰️  Features
+
+- Parallel AppImage updates with progress bars - ([9d0da26](https://github.com/pkgforge-dev/AppImageUpdate/commit/9d0da26d808157a9630f50d8d47c6cb3e7127bc3))
+
+### 📚 Documentation
+
+- Update README - ([029a364](https://github.com/pkgforge-dev/AppImageUpdate/commit/029a364a7489dc4b54dc4ea7f56797148e757cb7))
+
 ## [0.2.1](https://github.com/pkgforge-dev/AppImageUpdate/compare/0.2.0...0.2.1) - 2026-03-25
 
 ### ⛰️  Features
