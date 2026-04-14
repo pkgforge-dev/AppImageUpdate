@@ -8,6 +8,26 @@ use releasekit::{Filter, Forge, Release};
 use crate::config;
 use crate::error::{Error, Result};
 
+fn forge_error(e: releasekit::Error, project: &str) -> Error {
+    let msg = match &e {
+        releasekit::Error::Http { status, url } => {
+            format!("HTTP {status} from {url}")
+        }
+        releasekit::Error::Network(detail) => {
+            let detail = detail.strip_prefix("io: ").unwrap_or(detail);
+            format!("failed to connect to release server for {project}: {detail}")
+        }
+        releasekit::Error::NoReleases => {
+            format!("no releases found for {project}")
+        }
+        releasekit::Error::NoMatchingAsset => {
+            format!("no matching asset found for {project}")
+        }
+        _ => format!("{e}"),
+    };
+    Error::ForgeApi(msg)
+}
+
 #[derive(Debug, Clone)]
 pub enum ForgeKind {
     GitHub,
@@ -62,7 +82,7 @@ impl ForgeUpdateInfo {
         self.with_forge(|forge| {
             forge
                 .fetch_releases(&project, None)
-                .map_err(|e| Error::ForgeApi(e.to_string()))
+                .map_err(|e| forge_error(e, &project))
         })
     }
 
@@ -149,7 +169,7 @@ impl ForgeUpdateInfo {
 
         let releases = forge
             .fetch_releases(&project, tag)
-            .map_err(|e| Error::ForgeApi(e.to_string()))?;
+            .map_err(|e| forge_error(e, &project))?;
 
         let release = self.select_release(releases, tag.is_some(), find_prerelease)?;
 
@@ -162,32 +182,36 @@ impl ForgeUpdateInfo {
         is_specific_tag: bool,
         find_prerelease: bool,
     ) -> Result<Release> {
+        let project = format!("{}/{}", self.owner, self.repo);
+
         if is_specific_tag {
-            return releases
-                .into_iter()
-                .next()
-                .ok_or_else(|| Error::ForgeApi("No release found for tag".into()));
+            return releases.into_iter().next().ok_or_else(|| {
+                Error::ForgeApi(format!(
+                    "no release found for tag '{}' in {project}",
+                    self.tag
+                ))
+            });
         }
 
         if find_prerelease {
             return releases
                 .into_iter()
                 .find(|r| r.is_prerelease())
-                .ok_or_else(|| Error::ForgeApi("No prerelease found".into()));
+                .ok_or_else(|| Error::ForgeApi(format!("no prerelease found for {project}")));
         }
 
         if self.tag == "latest" {
             return releases
                 .into_iter()
                 .find(|r| !r.is_prerelease())
-                .ok_or_else(|| Error::ForgeApi("No stable release found".into()));
+                .ok_or_else(|| Error::ForgeApi(format!("no stable release found for {project}")));
         }
 
         // latest-all: first release regardless
         releases
             .into_iter()
             .next()
-            .ok_or_else(|| Error::ForgeApi("No release found".into()))
+            .ok_or_else(|| Error::ForgeApi(format!("no releases found for {project}")))
     }
 
     fn find_matching_asset(&self, release: &Release) -> Result<String> {
@@ -202,8 +226,11 @@ impl ForgeUpdateInfo {
 
         if matching.is_empty() {
             return Err(Error::ForgeApi(format!(
-                "No asset matched pattern: *{}",
-                self.filename
+                "no asset matching '*{}' in release {} of {}/{}",
+                self.filename,
+                release.tag(),
+                self.owner,
+                self.repo
             )));
         }
 
