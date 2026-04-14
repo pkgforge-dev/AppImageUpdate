@@ -102,7 +102,13 @@ impl ForgeUpdateInfo {
                 &action,
             ),
             ForgeKind::Gitea { instance } => {
-                let gt = Gitea::new(UreqClient, format!("https://{instance}"))
+                let base_url =
+                    if instance.starts_with("http://") || instance.starts_with("https://") {
+                        instance.to_string()
+                    } else {
+                        format!("https://{instance}")
+                    };
+                let gt = Gitea::new(UreqClient, base_url)
                     .with_token_from_env(&["GITEA_TOKEN", "FORGEJO_TOKEN"]);
                 action(&gt)
             }
