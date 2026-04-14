@@ -11,8 +11,8 @@ pub enum Error {
     #[error("HTTP error: {0}")]
     Http(String),
 
-    #[error("GitHub API error: {0}")]
-    GitHubApi(String),
+    #[error("Forge API error: {0}")]
+    ForgeApi(String),
 
     #[error("AppImage error: {0}")]
     AppImage(String),

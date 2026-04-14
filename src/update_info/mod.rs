@@ -1,9 +1,9 @@
+mod forge;
 mod generic;
-mod github;
 mod parser;
 
+pub use forge::GitHubUpdateInfo;
 pub use generic::GenericUpdateInfo;
-pub use github::GitHubUpdateInfo;
 
 use crate::error::Result;
 
