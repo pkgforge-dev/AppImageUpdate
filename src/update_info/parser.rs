@@ -24,7 +24,7 @@ pub fn parse(s: &str) -> Result<UpdateInfoInner> {
         "gh-releases-zsync" => parse_forge(ForgeKind::GitHub, &parts, "gh-releases-zsync"),
         "gl-releases-zsync" => parse_forge(ForgeKind::GitLab, &parts, "gl-releases-zsync"),
         "cb-releases-zsync" => parse_forge(ForgeKind::Codeberg, &parts, "cb-releases-zsync"),
-        "gitea-releases-zsync" => parse_gitea(&parts),
+        "gitea-releases-zsync" | "forgejo-releases-zsync" => parse_gitea(&parts),
         _ => Err(Error::InvalidUpdateInfo(format!(
             "Unknown update information type: {}",
             parts[0]
@@ -138,6 +138,22 @@ mod tests {
                 assert_eq!(f.repo, "repo");
                 assert_eq!(f.tag, "latest");
                 assert_eq!(f.filename, "app-*.AppImage");
+            }
+            _ => panic!("Expected Forge variant"),
+        }
+    }
+
+    #[test]
+    fn parse_forgejo_releases() {
+        let info =
+            parse("forgejo-releases-zsync|forgejo.example.com|owner|repo|latest|app-*.AppImage")
+                .unwrap();
+        match info {
+            UpdateInfoInner::Forge(f) => {
+                assert!(matches!(f.kind, ForgeKind::Gitea { .. }));
+                if let ForgeKind::Gitea { instance } = f.kind {
+                    assert_eq!(instance, "forgejo.example.com");
+                }
             }
             _ => panic!("Expected Forge variant"),
         }

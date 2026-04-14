@@ -103,7 +103,7 @@ impl ForgeUpdateInfo {
             ),
             ForgeKind::Gitea { instance } => {
                 let gt = Gitea::new(UreqClient, format!("https://{instance}"))
-                    .with_token_from_env(&["GITEA_TOKEN"]);
+                    .with_token_from_env(&["GITEA_TOKEN", "FORGEJO_TOKEN"]);
                 action(&gt)
             }
         }
