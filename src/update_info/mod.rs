@@ -32,6 +32,17 @@ impl UpdateInfo {
         &self.raw
     }
 
+    pub fn with_target_tag(mut self, tag: &str) -> Self {
+        if let UpdateInfoInner::Forge(ref mut f) = self.inner {
+            f.set_tag(tag.to_owned());
+        }
+        self
+    }
+
+    pub fn is_forge(&self) -> bool {
+        matches!(self.inner, UpdateInfoInner::Forge(_))
+    }
+
     pub fn zsync_url(&self) -> Result<String> {
         match &self.inner {
             UpdateInfoInner::Generic(g) => Ok(g.zsync_url().to_owned()),

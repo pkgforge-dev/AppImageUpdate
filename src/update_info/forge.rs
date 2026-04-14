@@ -43,6 +43,11 @@ impl ForgeUpdateInfo {
         }
     }
 
+    pub fn set_tag(&mut self, tag: String) {
+        self.tag = tag;
+        self.resolved_url = OnceCell::new();
+    }
+
     pub fn zsync_url(&self) -> Result<&str> {
         if self.resolved_url.get().is_none() {
             let url = self.resolve_url()?;

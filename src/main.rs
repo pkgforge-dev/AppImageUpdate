@@ -37,6 +37,9 @@ struct Cli {
     #[arg(short = 'j', long)]
     check_for_update: bool,
 
+    #[arg(short = 't', long, value_name = "TAG")]
+    target_tag: Option<String>,
+
     #[arg(
         long,
         value_name = "URL",
@@ -305,10 +308,16 @@ fn is_appimage(path: &Path) -> bool {
 }
 
 fn create_updater(cli: &Cli, path: &Path) -> Result<Updater, Error> {
-    if let Some(ref info) = cli.update_info {
-        Updater::with_update_info(path, info)
+    let updater = if let Some(ref info) = cli.update_info {
+        Updater::with_update_info(path, info)?
     } else {
-        Updater::new(path)
+        Updater::new(path)?
+    };
+
+    if let Some(ref tag) = cli.target_tag {
+        updater.target_tag(tag)
+    } else {
+        Ok(updater)
     }
 }
 

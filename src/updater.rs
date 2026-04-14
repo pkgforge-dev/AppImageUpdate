@@ -96,6 +96,16 @@ impl Updater {
         self
     }
 
+    pub fn target_tag(mut self, tag: &str) -> Result<Self> {
+        if !self.update_info.is_forge() {
+            return Err(Error::InvalidUpdateInfo(
+                "--target-tag is only supported for forge-based update info".into(),
+            ));
+        }
+        self.update_info = self.update_info.with_target_tag(tag);
+        Ok(self)
+    }
+
     pub fn progress_callback<F>(mut self, callback: F) -> Self
     where
         F: Fn(u64, u64) + Send + Sync + 'static,
