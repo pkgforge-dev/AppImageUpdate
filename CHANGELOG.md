@@ -1,4 +1,11 @@
 
+## [0.3.1](https://github.com/pkgforge-dev/AppImageUpdate/compare/0.3.0...0.3.1) - 2026-04-14
+
+### 🐛 Bug Fixes
+
+- Improve error messages with project context - ([9bfdfd9](https://github.com/pkgforge-dev/AppImageUpdate/commit/9bfdfd9ce55caed710f18c7c8afc4ff5a4eb308d))
+- Handle full URL in Gitea/Forgejo instance field - ([0683fbf](https://github.com/pkgforge-dev/AppImageUpdate/commit/0683fbf1deee5623c3f7cffef2dce20f6bc17430))
+
 ## [0.3.0](https://github.com/pkgforge-dev/AppImageUpdate/compare/0.2.1...0.3.0) - 2026-04-14
 
 ### ⛰️  Features
