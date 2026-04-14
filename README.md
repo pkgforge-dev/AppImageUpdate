@@ -89,6 +89,8 @@ Options:
       --output-dir <DIR>  Output directory for updated AppImages
   -d, --describe          Parse and describe AppImage and its update information
   -j, --check-for-update  Check for update (exit 1 if any available, 0 if not)
+  -l, --list-releases     List available releases from the update source
+  -t, --target-tag <TAG>  Install a specific version (e.g., for downgrade)
   -J, --jobs <N>          Number of parallel jobs (default: 0 = auto-detect)
       --github-api-proxy <URL>    GitHub API proxy [env: GITHUB_API_PROXY]
       --gitlab-api-proxy <URL>    GitLab API proxy [env: GITLAB_API_PROXY]
@@ -114,6 +116,7 @@ Options:
 | `gl-releases-zsync\|<owner>\|<repo>\|<tag>\|<filename>` | GitLab releases |
 | `cb-releases-zsync\|<owner>\|<repo>\|<tag>\|<filename>` | Codeberg releases |
 | `gitea-releases-zsync\|<instance>\|<owner>\|<repo>\|<tag>\|<filename>` | Gitea releases |
+| `forgejo-releases-zsync\|<instance>\|<owner>\|<repo>\|<tag>\|<filename>` | Forgejo releases (alias for Gitea) |
 
 The `<tag>` field supports special values:
 - `latest` - Latest stable (non-prerelease) release
@@ -150,7 +153,7 @@ output_dir = "~/Applications"
 | `GITHUB_TOKEN` / `GH_TOKEN` | GitHub authentication token |
 | `GITLAB_TOKEN` / `GL_TOKEN` | GitLab authentication token |
 | `CODEBERG_TOKEN` | Codeberg authentication token |
-| `GITEA_TOKEN` | Gitea authentication token |
+| `GITEA_TOKEN` / `FORGEJO_TOKEN` | Gitea/Forgejo authentication token |
 | `GITHUB_API_PROXY` | GitHub API proxy URL (comma-separated for multiple) |
 | `GITLAB_API_PROXY` | GitLab API proxy URL (comma-separated for multiple) |
 | `CODEBERG_API_PROXY` | Codeberg API proxy URL (comma-separated for multiple) |
@@ -166,7 +169,7 @@ This is a Rust rewrite of the upstream [AppImageUpdate](https://github.com/AppIm
 Advantages:
 - Single static binary with no runtime dependencies
 - Over 10x smaller
-- Multi-forge support (GitHub, GitLab, Codeberg, Gitea)
+- Multi-forge support (GitHub, GitLab, Codeberg, Gitea/Forgejo)
 - Cleaner, more maintainable codebase
 - URL caching to avoid redundant API calls
 - Proxy support for all forges
