@@ -2,7 +2,7 @@ mod forge;
 mod generic;
 mod parser;
 
-pub use forge::GitHubUpdateInfo;
+pub use forge::ForgeUpdateInfo;
 pub use generic::GenericUpdateInfo;
 
 use crate::error::Result;
@@ -16,7 +16,7 @@ pub struct UpdateInfo {
 #[derive(Debug, Clone)]
 enum UpdateInfoInner {
     Generic(GenericUpdateInfo),
-    GitHub(GitHubUpdateInfo),
+    Forge(ForgeUpdateInfo),
 }
 
 impl UpdateInfo {
@@ -35,7 +35,7 @@ impl UpdateInfo {
     pub fn zsync_url(&self) -> Result<String> {
         match &self.inner {
             UpdateInfoInner::Generic(g) => Ok(g.zsync_url().to_owned()),
-            UpdateInfoInner::GitHub(g) => g.zsync_url().map(|s| s.to_owned()),
+            UpdateInfoInner::Forge(f) => f.zsync_url().map(|s| s.to_owned()),
         }
     }
 }

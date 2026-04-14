@@ -1,6 +1,7 @@
 use crate::error::{Error, Result};
 
-use super::{GenericUpdateInfo, GitHubUpdateInfo, UpdateInfoInner};
+use super::forge::{ForgeKind, ForgeUpdateInfo};
+use super::{GenericUpdateInfo, UpdateInfoInner};
 
 pub fn parse(s: &str) -> Result<UpdateInfoInner> {
     let parts: Vec<&str> = s.split('|').collect();
@@ -20,24 +21,28 @@ pub fn parse(s: &str) -> Result<UpdateInfoInner> {
                 url: parts[1].into(),
             }))
         }
-        "gh-releases-zsync" => {
-            if parts.len() != 5 {
-                return Err(Error::InvalidUpdateInfo(
-                    "gh-releases-zsync format requires 4 parameters: gh-releases-zsync|<username>|<repo>|<tag>|<filename>".into(),
-                ));
-            }
-            Ok(UpdateInfoInner::GitHub(GitHubUpdateInfo::new(
-                parts[1].into(),
-                parts[2].into(),
-                parts[3].into(),
-                parts[4].into(),
-            )))
-        }
+        "gh-releases-zsync" => parse_forge(ForgeKind::GitHub, &parts, "gh-releases-zsync"),
+        "gl-releases-zsync" => parse_forge(ForgeKind::GitLab, &parts, "gl-releases-zsync"),
         _ => Err(Error::InvalidUpdateInfo(format!(
             "Unknown update information type: {}",
             parts[0]
         ))),
     }
+}
+
+fn parse_forge(kind: ForgeKind, parts: &[&str], prefix: &str) -> Result<UpdateInfoInner> {
+    if parts.len() != 5 {
+        return Err(Error::InvalidUpdateInfo(format!(
+            "{prefix} format requires 4 parameters: {prefix}|<owner>|<repo>|<tag>|<filename>"
+        )));
+    }
+    Ok(UpdateInfoInner::Forge(ForgeUpdateInfo::new(
+        kind,
+        parts[1].into(),
+        parts[2].into(),
+        parts[3].into(),
+        parts[4].into(),
+    )))
 }
 
 #[cfg(test)]
@@ -59,13 +64,29 @@ mod tests {
     fn parse_github_releases() {
         let info = parse("gh-releases-zsync|user|repo|latest|app-*.AppImage").unwrap();
         match info {
-            UpdateInfoInner::GitHub(g) => {
-                assert_eq!(g.username, "user");
-                assert_eq!(g.repo, "repo");
-                assert_eq!(g.tag, "latest");
-                assert_eq!(g.filename, "app-*.AppImage");
+            UpdateInfoInner::Forge(f) => {
+                assert!(matches!(f.kind, ForgeKind::GitHub));
+                assert_eq!(f.owner, "user");
+                assert_eq!(f.repo, "repo");
+                assert_eq!(f.tag, "latest");
+                assert_eq!(f.filename, "app-*.AppImage");
             }
-            _ => panic!("Expected GitHub variant"),
+            _ => panic!("Expected Forge variant"),
+        }
+    }
+
+    #[test]
+    fn parse_gitlab_releases() {
+        let info = parse("gl-releases-zsync|owner|repo|latest|app-*.AppImage").unwrap();
+        match info {
+            UpdateInfoInner::Forge(f) => {
+                assert!(matches!(f.kind, ForgeKind::GitLab));
+                assert_eq!(f.owner, "owner");
+                assert_eq!(f.repo, "repo");
+                assert_eq!(f.tag, "latest");
+                assert_eq!(f.filename, "app-*.AppImage");
+            }
+            _ => panic!("Expected Forge variant"),
         }
     }
 
@@ -78,5 +99,6 @@ mod tests {
     fn parse_missing_params() {
         assert!(parse("zsync").is_err());
         assert!(parse("gh-releases-zsync|user|repo").is_err());
+        assert!(parse("gl-releases-zsync|user|repo").is_err());
     }
 }

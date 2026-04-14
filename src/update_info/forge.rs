@@ -1,25 +1,39 @@
 use std::cell::OnceCell;
 
 use releasekit::client::UreqClient;
-use releasekit::platform::GitHub;
+use releasekit::platform::{GitHub, GitLab};
 use releasekit::{Filter, Forge, Release};
 
 use crate::config;
 use crate::error::{Error, Result};
 
 #[derive(Debug, Clone)]
-pub struct GitHubUpdateInfo {
-    pub username: String,
+pub enum ForgeKind {
+    GitHub,
+    GitLab,
+}
+
+#[derive(Debug, Clone)]
+pub struct ForgeUpdateInfo {
+    pub kind: ForgeKind,
+    pub owner: String,
     pub repo: String,
     pub tag: String,
     pub filename: String,
     resolved_url: OnceCell<String>,
 }
 
-impl GitHubUpdateInfo {
-    pub fn new(username: String, repo: String, tag: String, filename: String) -> Self {
+impl ForgeUpdateInfo {
+    pub fn new(
+        kind: ForgeKind,
+        owner: String,
+        repo: String,
+        tag: String,
+        filename: String,
+    ) -> Self {
         Self {
-            username,
+            kind,
+            owner,
             repo,
             tag,
             filename,
@@ -36,6 +50,16 @@ impl GitHubUpdateInfo {
     }
 
     fn resolve_url(&self) -> Result<String> {
+        match &self.kind {
+            ForgeKind::GitHub => self.resolve_github(),
+            ForgeKind::GitLab => {
+                let gl = GitLab::new(UreqClient).with_token_from_env(&["GITLAB_TOKEN", "GL_TOKEN"]);
+                self.fetch_with_forge(gl)
+            }
+        }
+    }
+
+    fn resolve_github(&self) -> Result<String> {
         let proxies = config::get_proxies();
 
         if proxies.is_empty() {
@@ -58,7 +82,7 @@ impl GitHubUpdateInfo {
     }
 
     fn fetch_with_forge(&self, forge: impl Forge) -> Result<String> {
-        let project = format!("{}/{}", self.username, self.repo);
+        let project = format!("{}/{}", self.owner, self.repo);
 
         let (tag, find_prerelease) = match self.tag.as_str() {
             "latest" | "latest-pre" | "latest-all" => (None, self.tag == "latest-pre"),
