@@ -23,6 +23,8 @@ pub fn parse(s: &str) -> Result<UpdateInfoInner> {
         }
         "gh-releases-zsync" => parse_forge(ForgeKind::GitHub, &parts, "gh-releases-zsync"),
         "gl-releases-zsync" => parse_forge(ForgeKind::GitLab, &parts, "gl-releases-zsync"),
+        "cb-releases-zsync" => parse_forge(ForgeKind::Codeberg, &parts, "cb-releases-zsync"),
+        "gitea-releases-zsync" => parse_gitea(&parts),
         _ => Err(Error::InvalidUpdateInfo(format!(
             "Unknown update information type: {}",
             parts[0]
@@ -42,6 +44,23 @@ fn parse_forge(kind: ForgeKind, parts: &[&str], prefix: &str) -> Result<UpdateIn
         parts[2].into(),
         parts[3].into(),
         parts[4].into(),
+    )))
+}
+
+fn parse_gitea(parts: &[&str]) -> Result<UpdateInfoInner> {
+    if parts.len() != 6 {
+        return Err(Error::InvalidUpdateInfo(
+            "gitea-releases-zsync format requires 5 parameters: gitea-releases-zsync|<instance>|<owner>|<repo>|<tag>|<filename>".into(),
+        ));
+    }
+    Ok(UpdateInfoInner::Forge(ForgeUpdateInfo::new(
+        ForgeKind::Gitea {
+            instance: parts[1].into(),
+        },
+        parts[2].into(),
+        parts[3].into(),
+        parts[4].into(),
+        parts[5].into(),
     )))
 }
 
@@ -91,6 +110,40 @@ mod tests {
     }
 
     #[test]
+    fn parse_codeberg_releases() {
+        let info = parse("cb-releases-zsync|owner|repo|latest|app-*.AppImage").unwrap();
+        match info {
+            UpdateInfoInner::Forge(f) => {
+                assert!(matches!(f.kind, ForgeKind::Codeberg));
+                assert_eq!(f.owner, "owner");
+                assert_eq!(f.repo, "repo");
+                assert_eq!(f.tag, "latest");
+                assert_eq!(f.filename, "app-*.AppImage");
+            }
+            _ => panic!("Expected Forge variant"),
+        }
+    }
+
+    #[test]
+    fn parse_gitea_releases() {
+        let info = parse("gitea-releases-zsync|gitea.example.com|owner|repo|latest|app-*.AppImage")
+            .unwrap();
+        match info {
+            UpdateInfoInner::Forge(f) => {
+                assert!(matches!(f.kind, ForgeKind::Gitea { .. }));
+                if let ForgeKind::Gitea { instance } = f.kind {
+                    assert_eq!(instance, "gitea.example.com");
+                }
+                assert_eq!(f.owner, "owner");
+                assert_eq!(f.repo, "repo");
+                assert_eq!(f.tag, "latest");
+                assert_eq!(f.filename, "app-*.AppImage");
+            }
+            _ => panic!("Expected Forge variant"),
+        }
+    }
+
+    #[test]
     fn parse_invalid_type() {
         assert!(parse("invalid|params").is_err());
     }
@@ -100,5 +153,7 @@ mod tests {
         assert!(parse("zsync").is_err());
         assert!(parse("gh-releases-zsync|user|repo").is_err());
         assert!(parse("gl-releases-zsync|user|repo").is_err());
+        assert!(parse("cb-releases-zsync|user|repo").is_err());
+        assert!(parse("gitea-releases-zsync|instance|user|repo").is_err());
     }
 }

@@ -1,7 +1,7 @@
 use std::cell::OnceCell;
 
 use releasekit::client::UreqClient;
-use releasekit::platform::{GitHub, GitLab};
+use releasekit::platform::{GitHub, GitLab, Gitea};
 use releasekit::{Filter, Forge, Release};
 
 use crate::config;
@@ -11,6 +11,8 @@ use crate::error::{Error, Result};
 pub enum ForgeKind {
     GitHub,
     GitLab,
+    Codeberg,
+    Gitea { instance: String },
 }
 
 #[derive(Debug, Clone)]
@@ -55,6 +57,16 @@ impl ForgeUpdateInfo {
             ForgeKind::GitLab => {
                 let gl = GitLab::new(UreqClient).with_token_from_env(&["GITLAB_TOKEN", "GL_TOKEN"]);
                 self.fetch_with_forge(gl)
+            }
+            ForgeKind::Codeberg => {
+                let cb = Gitea::new(UreqClient, "https://codeberg.org")
+                    .with_token_from_env(&["CODEBERG_TOKEN"]);
+                self.fetch_with_forge(cb)
+            }
+            ForgeKind::Gitea { instance } => {
+                let gt = Gitea::new(UreqClient, format!("https://{instance}"))
+                    .with_token_from_env(&["GITEA_TOKEN"]);
+                self.fetch_with_forge(gt)
             }
         }
     }
