@@ -53,16 +53,32 @@ impl ForgeUpdateInfo {
 
     fn resolve_url(&self) -> Result<String> {
         match &self.kind {
-            ForgeKind::GitHub => self.resolve_github(),
-            ForgeKind::GitLab => {
-                let gl = GitLab::new(UreqClient).with_token_from_env(&["GITLAB_TOKEN", "GL_TOKEN"]);
-                self.fetch_with_forge(gl)
-            }
-            ForgeKind::Codeberg => {
-                let cb = Gitea::new(UreqClient, "https://codeberg.org")
-                    .with_token_from_env(&["CODEBERG_TOKEN"]);
-                self.fetch_with_forge(cb)
-            }
+            ForgeKind::GitHub => self.resolve_with_proxies(
+                config::get_github_proxies(),
+                |base| {
+                    GitHub::new(UreqClient)
+                        .with_base_url(base)
+                        .with_token_from_env(&["GITHUB_TOKEN", "GH_TOKEN"])
+                },
+                || GitHub::new(UreqClient).with_token_from_env(&["GITHUB_TOKEN", "GH_TOKEN"]),
+            ),
+            ForgeKind::GitLab => self.resolve_with_proxies(
+                config::get_gitlab_proxies(),
+                |base| {
+                    GitLab::new(UreqClient)
+                        .with_base_url(base)
+                        .with_token_from_env(&["GITLAB_TOKEN", "GL_TOKEN"])
+                },
+                || GitLab::new(UreqClient).with_token_from_env(&["GITLAB_TOKEN", "GL_TOKEN"]),
+            ),
+            ForgeKind::Codeberg => self.resolve_with_proxies(
+                config::get_codeberg_proxies(),
+                |base| Gitea::new(UreqClient, base).with_token_from_env(&["CODEBERG_TOKEN"]),
+                || {
+                    Gitea::new(UreqClient, "https://codeberg.org")
+                        .with_token_from_env(&["CODEBERG_TOKEN"])
+                },
+            ),
             ForgeKind::Gitea { instance } => {
                 let gt = Gitea::new(UreqClient, format!("https://{instance}"))
                     .with_token_from_env(&["GITEA_TOKEN"]);
@@ -71,20 +87,19 @@ impl ForgeUpdateInfo {
         }
     }
 
-    fn resolve_github(&self) -> Result<String> {
-        let proxies = config::get_proxies();
-
+    fn resolve_with_proxies<F: Forge>(
+        &self,
+        proxies: Vec<String>,
+        make_proxy: impl Fn(&str) -> F,
+        make_default: impl FnOnce() -> F,
+    ) -> Result<String> {
         if proxies.is_empty() {
-            let gh = GitHub::new(UreqClient).with_token_from_env(&["GITHUB_TOKEN", "GH_TOKEN"]);
-            return self.fetch_with_forge(gh);
+            return self.fetch_with_forge(make_default());
         }
 
         let mut last_error = None;
         for proxy in &proxies {
-            let gh = GitHub::new(UreqClient)
-                .with_base_url(proxy)
-                .with_token_from_env(&["GITHUB_TOKEN", "GH_TOKEN"]);
-            match self.fetch_with_forge(gh) {
+            match self.fetch_with_forge(make_proxy(proxy)) {
                 Ok(url) => return Ok(url),
                 Err(e) => last_error = Some(e),
             }

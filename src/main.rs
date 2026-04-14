@@ -45,6 +45,22 @@ struct Cli {
     )]
     github_api_proxy: Vec<String>,
 
+    #[arg(
+        long,
+        value_name = "URL",
+        env = "GITLAB_API_PROXY",
+        value_delimiter = ','
+    )]
+    gitlab_api_proxy: Vec<String>,
+
+    #[arg(
+        long,
+        value_name = "URL",
+        env = "CODEBERG_API_PROXY",
+        value_delimiter = ','
+    )]
+    codeberg_api_proxy: Vec<String>,
+
     #[arg(short = 'J', long, value_name = "N", default_value = "0")]
     jobs: usize,
 }
@@ -69,7 +85,13 @@ fn main() {
 
 fn run(cli: Cli) -> Result<(), Error> {
     if !cli.github_api_proxy.is_empty() {
-        config::set_proxies(cli.github_api_proxy.clone());
+        config::set_github_proxies(cli.github_api_proxy.clone());
+    }
+    if !cli.gitlab_api_proxy.is_empty() {
+        config::set_gitlab_proxies(cli.gitlab_api_proxy.clone());
+    }
+    if !cli.codeberg_api_proxy.is_empty() {
+        config::set_codeberg_proxies(cli.codeberg_api_proxy.clone());
     }
     if cli.paths.is_empty() {
         return Err(Error::AppImage(

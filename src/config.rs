@@ -28,27 +28,45 @@ impl StringOrVec {
 #[derive(Debug, Default, Deserialize)]
 pub struct Config {
     pub github_api_proxy: Option<StringOrVec>,
+    pub gitlab_api_proxy: Option<StringOrVec>,
+    pub codeberg_api_proxy: Option<StringOrVec>,
     pub remove_old: Option<bool>,
     pub output_dir: Option<PathBuf>,
 }
 
 static CONFIG: OnceLock<Config> = OnceLock::new();
-static PROXIES: OnceLock<Vec<String>> = OnceLock::new();
+static GITHUB_PROXIES: OnceLock<Vec<String>> = OnceLock::new();
+static GITLAB_PROXIES: OnceLock<Vec<String>> = OnceLock::new();
+static CODEBERG_PROXIES: OnceLock<Vec<String>> = OnceLock::new();
 
 pub fn init() {
     let config = load_config();
     let _ = CONFIG.set(config);
 }
 
-pub fn set_proxies(proxies: Vec<String>) {
+pub fn set_github_proxies(proxies: Vec<String>) {
     if !proxies.is_empty() {
-        let _ = PROXIES.set(proxies);
+        let _ = GITHUB_PROXIES.set(proxies);
+    }
+}
+
+pub fn set_gitlab_proxies(proxies: Vec<String>) {
+    if !proxies.is_empty() {
+        let _ = GITLAB_PROXIES.set(proxies);
+    }
+}
+
+pub fn set_codeberg_proxies(proxies: Vec<String>) {
+    if !proxies.is_empty() {
+        let _ = CODEBERG_PROXIES.set(proxies);
     }
 }
 
 pub fn get() -> &'static Config {
     static DEFAULT: Config = Config {
         github_api_proxy: None,
+        gitlab_api_proxy: None,
+        codeberg_api_proxy: None,
         remove_old: None,
         output_dir: None,
     };
@@ -80,20 +98,38 @@ fn try_load_config(path: PathBuf) -> Option<Config> {
         .and_then(|content| toml::from_str(&content).ok())
 }
 
-pub fn get_proxies() -> Vec<String> {
-    if let Some(proxies) = PROXIES.get() {
+pub fn get_github_proxies() -> Vec<String> {
+    get_forge_proxies(&GITHUB_PROXIES, "GITHUB_API_PROXY", |c| {
+        c.github_api_proxy.as_ref()
+    })
+}
+
+pub fn get_gitlab_proxies() -> Vec<String> {
+    get_forge_proxies(&GITLAB_PROXIES, "GITLAB_API_PROXY", |c| {
+        c.gitlab_api_proxy.as_ref()
+    })
+}
+
+pub fn get_codeberg_proxies() -> Vec<String> {
+    get_forge_proxies(&CODEBERG_PROXIES, "CODEBERG_API_PROXY", |c| {
+        c.codeberg_api_proxy.as_ref()
+    })
+}
+
+fn get_forge_proxies(
+    cli_proxies: &OnceLock<Vec<String>>,
+    env_var: &str,
+    config_field: impl FnOnce(&Config) -> Option<&StringOrVec>,
+) -> Vec<String> {
+    if let Some(proxies) = cli_proxies.get() {
         return proxies.clone();
     }
 
-    if let Ok(s) = std::env::var("GITHUB_API_PROXY") {
+    if let Ok(s) = std::env::var(env_var) {
         return parse_proxies(&s);
     }
 
-    get()
-        .github_api_proxy
-        .as_ref()
-        .map(|v| v.to_vec())
-        .unwrap_or_default()
+    config_field(get()).map(|v| v.to_vec()).unwrap_or_default()
 }
 
 pub fn get_remove_old(cli_value: Option<bool>) -> bool {
@@ -130,14 +166,4 @@ fn parse_proxies(s: &str) -> Vec<String> {
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
         .collect()
-}
-
-pub fn build_api_url(path: &str, proxy: Option<&str>) -> String {
-    match proxy {
-        Some(proxy) => {
-            let proxy = proxy.trim_end_matches('/');
-            format!("{}{}", proxy, path)
-        }
-        None => format!("https://api.github.com{}", path),
-    }
 }
