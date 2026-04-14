@@ -37,6 +37,9 @@ struct Cli {
     #[arg(short = 'j', long)]
     check_for_update: bool,
 
+    #[arg(short = 'l', long)]
+    list_releases: bool,
+
     #[arg(short = 't', long, value_name = "TAG")]
     target_tag: Option<String>,
 
@@ -157,6 +160,35 @@ fn run(cli: Cli) -> Result<(), Error> {
 
         if any_update_available.load(std::sync::atomic::Ordering::Relaxed) {
             std::process::exit(1);
+        }
+        return Ok(());
+    }
+
+    if cli.list_releases {
+        for path in &appimages {
+            let updater = create_updater(&cli, path)?;
+            let name = path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("unknown");
+            match updater.list_releases() {
+                Ok(releases) => {
+                    if appimages.len() > 1 {
+                        eprintln!("{}:", name);
+                    }
+                    let max_tag = releases.iter().map(|r| r.tag().len()).max().unwrap_or(0);
+                    for r in &releases {
+                        let date = r.published_at().split('T').next().unwrap_or("");
+                        let pre = if r.is_prerelease() {
+                            "  [pre-release]"
+                        } else {
+                            ""
+                        };
+                        eprintln!("  {:<width$}  {}{}", r.tag(), date, pre, width = max_tag);
+                    }
+                }
+                Err(e) => eprintln!("  {} Error: {}", name, e),
+            }
         }
         return Ok(());
     }

@@ -3,6 +3,7 @@ mod generic;
 mod parser;
 
 pub use forge::ForgeUpdateInfo;
+pub use forge::ReleaseInfo;
 pub use generic::GenericUpdateInfo;
 
 use crate::error::Result;
@@ -41,6 +42,15 @@ impl UpdateInfo {
 
     pub fn is_forge(&self) -> bool {
         matches!(self.inner, UpdateInfoInner::Forge(_))
+    }
+
+    pub fn list_releases(&self) -> Result<Vec<ReleaseInfo>> {
+        match &self.inner {
+            UpdateInfoInner::Generic(_) => Err(crate::error::Error::InvalidUpdateInfo(
+                "--list-releases is only supported for forge-based update info".into(),
+            )),
+            UpdateInfoInner::Forge(f) => f.list_releases(),
+        }
     }
 
     pub fn zsync_url(&self) -> Result<String> {

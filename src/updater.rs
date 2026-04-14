@@ -172,6 +172,10 @@ impl Updater {
         self.update_info.raw()
     }
 
+    pub fn list_releases(&self) -> Result<Vec<crate::update_info::ReleaseInfo>> {
+        self.update_info.list_releases()
+    }
+
     pub fn zsync_url(&self) -> Result<String> {
         self.update_info.zsync_url()
     }

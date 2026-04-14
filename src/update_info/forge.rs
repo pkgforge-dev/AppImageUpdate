@@ -1,5 +1,6 @@
 use std::cell::OnceCell;
 
+pub use releasekit::Release as ReleaseInfo;
 use releasekit::client::UreqClient;
 use releasekit::platform::{GitHub, GitLab, Gitea};
 use releasekit::{Filter, Forge, Release};
@@ -56,9 +57,22 @@ impl ForgeUpdateInfo {
         Ok(self.resolved_url.get().unwrap())
     }
 
+    pub fn list_releases(&self) -> Result<Vec<Release>> {
+        let project = format!("{}/{}", self.owner, self.repo);
+        self.with_forge(|forge| {
+            forge
+                .fetch_releases(&project, None)
+                .map_err(|e| Error::ForgeApi(e.to_string()))
+        })
+    }
+
     fn resolve_url(&self) -> Result<String> {
+        self.with_forge(|forge| self.fetch_with_forge(forge))
+    }
+
+    fn with_forge<T>(&self, action: impl Fn(&dyn Forge) -> Result<T>) -> Result<T> {
         match &self.kind {
-            ForgeKind::GitHub => self.resolve_with_proxies(
+            ForgeKind::GitHub => self.with_forge_proxied(
                 config::get_github_proxies(),
                 |base| {
                     GitHub::new(UreqClient)
@@ -66,8 +80,9 @@ impl ForgeUpdateInfo {
                         .with_token_from_env(&["GITHUB_TOKEN", "GH_TOKEN"])
                 },
                 || GitHub::new(UreqClient).with_token_from_env(&["GITHUB_TOKEN", "GH_TOKEN"]),
+                &action,
             ),
-            ForgeKind::GitLab => self.resolve_with_proxies(
+            ForgeKind::GitLab => self.with_forge_proxied(
                 config::get_gitlab_proxies(),
                 |base| {
                     GitLab::new(UreqClient)
@@ -75,37 +90,42 @@ impl ForgeUpdateInfo {
                         .with_token_from_env(&["GITLAB_TOKEN", "GL_TOKEN"])
                 },
                 || GitLab::new(UreqClient).with_token_from_env(&["GITLAB_TOKEN", "GL_TOKEN"]),
+                &action,
             ),
-            ForgeKind::Codeberg => self.resolve_with_proxies(
+            ForgeKind::Codeberg => self.with_forge_proxied(
                 config::get_codeberg_proxies(),
                 |base| Gitea::new(UreqClient, base).with_token_from_env(&["CODEBERG_TOKEN"]),
                 || {
                     Gitea::new(UreqClient, "https://codeberg.org")
                         .with_token_from_env(&["CODEBERG_TOKEN"])
                 },
+                &action,
             ),
             ForgeKind::Gitea { instance } => {
                 let gt = Gitea::new(UreqClient, format!("https://{instance}"))
                     .with_token_from_env(&["GITEA_TOKEN"]);
-                self.fetch_with_forge(gt)
+                action(&gt)
             }
         }
     }
 
-    fn resolve_with_proxies<F: Forge>(
+    fn with_forge_proxied<F: Forge, T>(
         &self,
         proxies: Vec<String>,
         make_proxy: impl Fn(&str) -> F,
         make_default: impl FnOnce() -> F,
-    ) -> Result<String> {
+        action: &impl Fn(&dyn Forge) -> Result<T>,
+    ) -> Result<T> {
         if proxies.is_empty() {
-            return self.fetch_with_forge(make_default());
+            let forge = make_default();
+            return action(&forge);
         }
 
         let mut last_error = None;
         for proxy in &proxies {
-            match self.fetch_with_forge(make_proxy(proxy)) {
-                Ok(url) => return Ok(url),
+            let forge = make_proxy(proxy);
+            match action(&forge) {
+                Ok(v) => return Ok(v),
                 Err(e) => last_error = Some(e),
             }
         }
@@ -113,7 +133,7 @@ impl ForgeUpdateInfo {
         Err(last_error.unwrap_or_else(|| Error::ForgeApi("All proxies failed".into())))
     }
 
-    fn fetch_with_forge(&self, forge: impl Forge) -> Result<String> {
+    fn fetch_with_forge(&self, forge: &dyn Forge) -> Result<String> {
         let project = format!("{}/{}", self.owner, self.repo);
 
         let (tag, find_prerelease) = match self.tag.as_str() {
