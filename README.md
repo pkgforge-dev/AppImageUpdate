@@ -7,6 +7,7 @@ A Rust implementation of AppImageUpdate - a tool for updating AppImages using ef
 
 - **Delta Updates** - Only download the changed portions of the AppImage, saving bandwidth and time
 - **Parallel Updates** - Update multiple AppImages concurrently with per-URL deduplication
+- **Multi-Forge Support** - Fetch releases from GitHub, GitLab, Codeberg, and Gitea instances
 - **Decentralized** - No central repository required; updates come directly from the source
 - **Directory Scanning** - Pass a directory to update all AppImages inside
 - **Progress Bars** - Real-time progress during downloads with per-file bars
@@ -89,8 +90,9 @@ Options:
   -d, --describe          Parse and describe AppImage and its update information
   -j, --check-for-update  Check for update (exit 1 if any available, 0 if not)
   -J, --jobs <N>          Number of parallel jobs (default: 0 = auto-detect)
-      --github-api-proxy <URL>  GitHub API proxy URL [env: GITHUB_API_PROXY]
-                            (supports comma-separated list for fallback)
+      --github-api-proxy <URL>    GitHub API proxy [env: GITHUB_API_PROXY]
+      --gitlab-api-proxy <URL>    GitLab API proxy [env: GITLAB_API_PROXY]
+      --codeberg-api-proxy <URL>  Codeberg API proxy [env: CODEBERG_API_PROXY]
   -h, --help              Print help
   -V, --version           Print version
 ```
@@ -103,14 +105,35 @@ Options:
 4. **Downloads Only Changes** - Fetches only the blocks that differ from the local copy
 5. **Assembles & Verifies** - Reconstructs the file and verifies SHA1 checksum
 
+## Supported Update Formats
+
+| Format | Description |
+|--------|-------------|
+| `zsync\|<url>` | Direct zsync URL |
+| `gh-releases-zsync\|<owner>\|<repo>\|<tag>\|<filename>` | GitHub releases |
+| `gl-releases-zsync\|<owner>\|<repo>\|<tag>\|<filename>` | GitLab releases |
+| `cb-releases-zsync\|<owner>\|<repo>\|<tag>\|<filename>` | Codeberg releases |
+| `gitea-releases-zsync\|<instance>\|<owner>\|<repo>\|<tag>\|<filename>` | Gitea releases |
+
+The `<tag>` field supports special values:
+- `latest` - Latest stable (non-prerelease) release
+- `latest-pre` - Latest prerelease
+- `latest-all` - Latest release regardless of prerelease status
+- Any other value is treated as a specific tag name
+
+The `<filename>` field supports glob patterns (e.g., `*x86_64.AppImage`).
+
 ## Configuration
 
 Create a config file at `~/.config/appimageupdate/config.toml`:
 
 ```toml
-# GitHub API proxy (supports single or multiple for fallback)
+# API proxies (supports single string or array for fallback)
 github_api_proxy = "https://ghproxy.net"
-# Or multiple proxies:
+# gitlab_api_proxy = "https://glproxy.example.com"
+# codeberg_api_proxy = "https://cbproxy.example.com"
+
+# Or multiple proxies for fallback:
 # github_api_proxy = ["https://ghproxy.net", "https://mirror.example.com"]
 
 # Remove old AppImage after successful update
@@ -124,16 +147,17 @@ output_dir = "~/Applications"
 
 | Variable | Description |
 |----------|-------------|
+| `GITHUB_TOKEN` / `GH_TOKEN` | GitHub authentication token |
+| `GITLAB_TOKEN` / `GL_TOKEN` | GitLab authentication token |
+| `CODEBERG_TOKEN` | Codeberg authentication token |
+| `GITEA_TOKEN` | Gitea authentication token |
 | `GITHUB_API_PROXY` | GitHub API proxy URL (comma-separated for multiple) |
+| `GITLAB_API_PROXY` | GitLab API proxy URL (comma-separated for multiple) |
+| `CODEBERG_API_PROXY` | Codeberg API proxy URL (comma-separated for multiple) |
 | `APPIMAGEUPDATE_REMOVE_OLD` | Set to `true` to remove old AppImage after update |
 | `APPIMAGEUPDATE_OUTPUT_DIR` | Output directory for updated AppImages |
 
 **Priority:** CLI args > Environment variables > Config file
-
-## Supported Update Formats
-
-- `zsync|<url>` - Direct zsync URL
-- `gh-releases-zsync|<user>|<repo>|<tag>|<filename>` - GitHub releases with glob pattern matching
 
 ## Comparison with Upstream
 
@@ -142,9 +166,10 @@ This is a Rust rewrite of the upstream [AppImageUpdate](https://github.com/AppIm
 Advantages:
 - Single static binary with no runtime dependencies
 - Over 10x smaller
+- Multi-forge support (GitHub, GitLab, Codeberg, Gitea)
 - Cleaner, more maintainable codebase
 - URL caching to avoid redundant API calls
-- Proxy support
+- Proxy support for all forges
 - Better error messages
 
 Differences:
