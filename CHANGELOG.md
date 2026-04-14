@@ -1,4 +1,26 @@
 
+## [0.3.0](https://github.com/pkgforge-dev/AppImageUpdate/compare/0.2.1...0.3.0) - 2026-04-14
+
+### ⛰️  Features
+
+- Add Forgejo support as alias for Gitea - ([886efa2](https://github.com/pkgforge-dev/AppImageUpdate/commit/886efa245c22d61a668a748b8f8df0c8c3ad3e21))
+- Add --list-releases to show available versions - ([78d3b89](https://github.com/pkgforge-dev/AppImageUpdate/commit/78d3b892740b38043f34dada05dd72dcd51713f3))
+- Add --target-tag for version targeting and downgrade - ([513e522](https://github.com/pkgforge-dev/AppImageUpdate/commit/513e522aefabe2609442e2f0bb69c7b42f116d1f))
+- Add API proxy support for GitLab and Codeberg - ([0e802af](https://github.com/pkgforge-dev/AppImageUpdate/commit/0e802afbcdf968fbde292b6dec41bcba5f2d11bd))
+- Add Codeberg and Gitea update info support - ([5d85807](https://github.com/pkgforge-dev/AppImageUpdate/commit/5d85807198cd123461c33649a5dac50ddbda2783))
+- Add GitLab update info support - ([c20dc30](https://github.com/pkgforge-dev/AppImageUpdate/commit/c20dc30fb618b0303cd3691bad3388d7de51087d))
+- Parallel AppImage updates with progress bars - ([9d0da26](https://github.com/pkgforge-dev/AppImageUpdate/commit/9d0da26d808157a9630f50d8d47c6cb3e7127bc3))
+
+### 🚜 Refactor
+
+- Use releasekit for GitHub release fetching - ([ad1465c](https://github.com/pkgforge-dev/AppImageUpdate/commit/ad1465c4bc64e636f4372d20a38eff5a512ef472))
+
+### 📚 Documentation
+
+- Update README - ([e801527](https://github.com/pkgforge-dev/AppImageUpdate/commit/e801527310c2047e3f9283e64bf1485c36317495))
+- Update README with multi-forge support - ([52c02f8](https://github.com/pkgforge-dev/AppImageUpdate/commit/52c02f8291eb7324a42c1b14f23bb9fe61c1dde3))
+- Update README - ([029a364](https://github.com/pkgforge-dev/AppImageUpdate/commit/029a364a7489dc4b54dc4ea7f56797148e757cb7))
+
 ## [0.2.1](https://github.com/pkgforge-dev/AppImageUpdate/compare/0.2.0...0.2.1) - 2026-03-25
 
 ### ⛰️  Features
