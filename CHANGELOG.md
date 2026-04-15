@@ -1,4 +1,10 @@
 
+## [0.3.2](https://github.com/pkgforge-dev/AppImageUpdate/compare/0.3.1...0.3.2) - 2026-04-15
+
+### ⚙️ Miscellaneous Tasks
+
+- Update msrv - ([1a342df](https://github.com/pkgforge-dev/AppImageUpdate/commit/1a342df9eae8a3734567342a2551d84631f9b17b))
+
 ## [0.3.1](https://github.com/pkgforge-dev/AppImageUpdate/compare/0.3.0...0.3.1) - 2026-04-14
 
 ### 🐛 Bug Fixes
