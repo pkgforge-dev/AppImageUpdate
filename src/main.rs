@@ -40,6 +40,9 @@ struct Cli {
     #[arg(short = 'l', long)]
     list_releases: bool,
 
+    #[arg(long)]
+    self_update: bool,
+
     #[arg(short = 't', long, value_name = "TAG")]
     target_tag: Option<String>,
 
@@ -99,6 +102,10 @@ fn run(cli: Cli) -> Result<(), Error> {
     if !cli.codeberg_api_proxy.is_empty() {
         config::set_codeberg_proxies(cli.codeberg_api_proxy.clone());
     }
+    if cli.self_update {
+        return appimageupdate::self_update::run();
+    }
+
     if cli.paths.is_empty() {
         return Err(Error::AppImage(
             "No AppImage path provided. Use --help for usage.".into(),

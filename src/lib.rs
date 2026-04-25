@@ -1,6 +1,7 @@
 pub mod appimage;
 pub mod config;
 pub mod error;
+pub mod self_update;
 pub mod update_info;
 pub mod updater;
 pub mod util;
