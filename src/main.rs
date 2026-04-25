@@ -164,6 +164,16 @@ fn run(cli: Cli) -> Result<(), Error> {
         return Ok(());
     }
 
+    if cli.describe {
+        for (i, path) in appimages.iter().enumerate() {
+            if i > 0 {
+                eprintln!();
+            }
+            describe_appimage(&cli, path);
+        }
+        return Ok(());
+    }
+
     if cli.list_releases {
         for path in &appimages {
             let updater = create_updater(&cli, path)?;
@@ -339,6 +349,44 @@ fn is_appimage(path: &Path) -> bool {
     &magic[0..2] == b"AI" && (magic[2] == 1 || magic[2] == 2)
 }
 
+fn describe_appimage(cli: &Cli, path: &Path) {
+    println!("{}:", path.display());
+
+    let updater = match create_updater(cli, path) {
+        Ok(u) => u,
+        Err(e) => {
+            println!("  Error: {}", e);
+            return;
+        }
+    };
+
+    println!("  AppImage type: {}", updater.appimage_type());
+
+    let info = updater.update_info_struct();
+    println!("  Update info: {}", info.raw());
+    println!(
+        "  Update info type: {} ({})",
+        info.type_display_name(),
+        info.type_label()
+    );
+
+    if let Some(g) = info.generic_info() {
+        println!("  ZSync URL: {}", g.zsync_url());
+    } else if let Some(f) = info.forge_info() {
+        if let appimageupdate::ForgeKind::Gitea { instance } = &f.kind {
+            println!("  Instance: {}", instance);
+        }
+        println!("  Project: {}/{}", f.owner, f.repo);
+        println!("  Tag: {}", f.tag);
+        println!("  Filename: {}", f.filename);
+    }
+
+    match updater.zsync_url() {
+        Ok(url) => println!("  Assembled URL: {}", url),
+        Err(e) => println!("  Assembled URL: <unresolved: {}>", e),
+    }
+}
+
 fn create_updater(cli: &Cli, path: &Path) -> Result<Updater, Error> {
     let updater = if let Some(ref info) = cli.update_info {
         Updater::with_update_info(path, info)?
@@ -373,19 +421,6 @@ fn handle_appimage(
     }
     if cli.overwrite {
         updater = updater.overwrite(true);
-    }
-
-    if cli.describe {
-        let (target_path, target_size) = updater.target_info()?;
-        multi.suspend(|| {
-            eprintln!(
-                "  {} → {} ({})",
-                full_name,
-                target_path.display(),
-                format_size(target_size)
-            );
-        });
-        return Ok(UpdateResult::default());
     }
 
     let source_path = updater.source_path().to_path_buf();

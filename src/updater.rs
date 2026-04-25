@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use zsync_rs::{ControlFile, ZsyncAssembly};
 
-use crate::appimage::AppImage;
+use crate::appimage::{AppImage, AppImageType};
 use crate::error::{Error, Result};
 use crate::update_info::UpdateInfo;
 
@@ -170,6 +170,14 @@ impl Updater {
 
     pub fn update_info(&self) -> &str {
         self.update_info.raw()
+    }
+
+    pub fn update_info_struct(&self) -> &UpdateInfo {
+        &self.update_info
+    }
+
+    pub fn appimage_type(&self) -> AppImageType {
+        self.appimage.appimage_type()
     }
 
     pub fn list_releases(&self) -> Result<Vec<crate::update_info::ReleaseInfo>> {

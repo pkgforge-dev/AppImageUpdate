@@ -36,6 +36,26 @@ pub enum ForgeKind {
     Gitea { instance: String },
 }
 
+impl ForgeKind {
+    pub fn label(&self) -> &'static str {
+        match self {
+            ForgeKind::GitHub => "gh-releases-zsync",
+            ForgeKind::GitLab => "gl-releases-zsync",
+            ForgeKind::Codeberg => "cb-releases-zsync",
+            ForgeKind::Gitea { .. } => "gitea-releases-zsync",
+        }
+    }
+
+    pub fn display_name(&self) -> &'static str {
+        match self {
+            ForgeKind::GitHub => "GitHub Releases",
+            ForgeKind::GitLab => "GitLab Releases",
+            ForgeKind::Codeberg => "Codeberg Releases",
+            ForgeKind::Gitea { .. } => "Gitea/Forgejo Releases",
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct ForgeUpdateInfo {
     pub kind: ForgeKind,

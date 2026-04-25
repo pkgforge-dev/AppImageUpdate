@@ -2,6 +2,7 @@ mod forge;
 mod generic;
 mod parser;
 
+pub use forge::ForgeKind;
 pub use forge::ForgeUpdateInfo;
 pub use forge::ReleaseInfo;
 pub use generic::GenericUpdateInfo;
@@ -42,6 +43,34 @@ impl UpdateInfo {
 
     pub fn is_forge(&self) -> bool {
         matches!(self.inner, UpdateInfoInner::Forge(_))
+    }
+
+    pub fn forge_info(&self) -> Option<&ForgeUpdateInfo> {
+        match &self.inner {
+            UpdateInfoInner::Forge(f) => Some(f),
+            UpdateInfoInner::Generic(_) => None,
+        }
+    }
+
+    pub fn generic_info(&self) -> Option<&GenericUpdateInfo> {
+        match &self.inner {
+            UpdateInfoInner::Generic(g) => Some(g),
+            UpdateInfoInner::Forge(_) => None,
+        }
+    }
+
+    pub fn type_label(&self) -> &'static str {
+        match &self.inner {
+            UpdateInfoInner::Generic(_) => "zsync",
+            UpdateInfoInner::Forge(f) => f.kind.label(),
+        }
+    }
+
+    pub fn type_display_name(&self) -> &'static str {
+        match &self.inner {
+            UpdateInfoInner::Generic(_) => "Generic ZSync",
+            UpdateInfoInner::Forge(f) => f.kind.display_name(),
+        }
     }
 
     pub fn list_releases(&self) -> Result<Vec<ReleaseInfo>> {
