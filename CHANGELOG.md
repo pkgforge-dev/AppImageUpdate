@@ -1,4 +1,18 @@
 
+## [0.3.2](https://github.com/pkgforge-dev/AppImageUpdate/compare/0.3.1...0.3.2) - 2026-04-25
+
+### ⛰️  Features
+
+- Add --self-update to upgrade the binary in place - ([b869760](https://github.com/pkgforge-dev/AppImageUpdate/commit/b869760564c15538b7739515cf9cdda2367cf966))
+
+### 🐛 Bug Fixes
+
+- Make --describe print appimage type, update info, and assembled URL - ([81f5fc9](https://github.com/pkgforge-dev/AppImageUpdate/commit/81f5fc971fcc21e64b82227b34094c35a85e95a2))
+
+### ⚙️ Miscellaneous Tasks
+
+- Update msrv - ([1a342df](https://github.com/pkgforge-dev/AppImageUpdate/commit/1a342df9eae8a3734567342a2551d84631f9b17b))
+
 ## [0.3.1](https://github.com/pkgforge-dev/AppImageUpdate/compare/0.3.0...0.3.1) - 2026-04-14
 
 ### 🐛 Bug Fixes
