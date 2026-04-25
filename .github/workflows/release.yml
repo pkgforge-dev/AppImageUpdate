@@ -80,7 +80,7 @@ jobs:
           tag: ${{ github.ref }}
 
       - name: Attest Build Provenance
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           subject-name: "appimageupdate-${{ matrix.build.NAME }}"
           subject-path: appimageupdate-${{ matrix.build.NAME }}*
