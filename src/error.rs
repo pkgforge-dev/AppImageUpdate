@@ -19,6 +19,9 @@ pub enum Error {
 
     #[error("Zsync error: {0}")]
     Zsync(String),
+
+    #[error("Aborted")]
+    Aborted,
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

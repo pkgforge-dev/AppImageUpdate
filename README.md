@@ -89,6 +89,8 @@ Asks whether to update individual AppImages or everything in a folder, opens the
 
 The GUI also opens on its own when `appimageupdate` is run with no AppImage, no terminal attached and a display server available, which is what happens when it is double-clicked in a file manager. Cron jobs, systemd units and CI runners have no display server, so they keep getting the usage error instead.
 
+Cancel stops the update straight away, part way through a scan or download, and leaves the existing AppImage untouched.
+
 `-j`, `-d` and `-l` report through stdout and the exit code, so they stay on the command line even when combined with `-g`.
 
 The dialogs are drawn by [zenity-rs](https://github.com/QaidVoid/zenity-rs) directly on X11 or Wayland, so the binary stays self-contained. Build with `--no-default-features` to drop the GUI entirely.

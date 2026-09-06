@@ -158,6 +158,10 @@ fn update_all(cli: &Cli, appimages: &[PathBuf], handle: &ProgressHandle) -> Summ
                 summary.saved += stats.bytes_reused();
             }
             Ok(None) => summary.up_to_date += 1,
+            Err(Error::Aborted) => {
+                summary.cancelled = true;
+                break;
+            }
             Err(e) => summary.errors.push(format!("{}: {}", name, e)),
         }
     }
@@ -175,7 +179,7 @@ fn update_one(
     total: u64,
     handle: &ProgressHandle,
 ) -> Result<Option<UpdateStats>, Error> {
-    let mut updater = create_updater(cli, path)?;
+    let mut updater = create_updater(cli, path)?.abort_flag(handle.cancel_flag());
     if let Some(output_dir) = config::get_output_dir(cli.output_dir.clone()) {
         updater = updater.output_dir(&output_dir);
     }
