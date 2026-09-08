@@ -107,13 +107,16 @@ jobs:
 
       - name: Build
         run: |
+          # the profile only asks for panic = "abort" so the crate still builds
+          # on stable; nightly upgrades it to immediate-abort here
+          export RUSTFLAGS="-Z unstable-options -C panic=immediate-abort"
           if [ -n "${{ matrix.build.ZIGTARGET }}" ]; then
             TARGET_ENV=$(echo "${{ matrix.build.TARGET }}" | tr 'a-z-' 'A-Z_')
             CC_ENV=$(echo "${{ matrix.build.TARGET }}" | tr '-' '_')
             export CARGO_TARGET_${TARGET_ENV}_LINKER="$RUNNER_TEMP/zigcc"
             export CC_${CC_ENV}="$RUNNER_TEMP/zigcc"
             export AR_${CC_ENV}="$RUNNER_TEMP/zigar"
-            export RUSTFLAGS="-C target-feature=+crt-static -C link-self-contained=no"
+            RUSTFLAGS="$RUSTFLAGS -C target-feature=+crt-static -C link-self-contained=no"
             export ZIG_GLOBAL_CACHE_DIR="$RUNNER_TEMP/zig-cache"
             export ZIG_LOCAL_CACHE_DIR="$RUNNER_TEMP/zig-cache"
           fi
