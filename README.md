@@ -18,6 +18,10 @@ A Rust implementation of AppImageUpdate - a tool for updating AppImages using ef
 
 ## Installation
 
+### Prebuilt Binaries
+
+Every release ships static binaries for `x86_64`, `aarch64`, `riscv64`, `loongarch64`, `ppc64`, and `ppc64le` on the [releases page](https://github.com/pkgforge-dev/appimageupdate/releases). An installed copy can upgrade itself with `appimageupdate --self-update`.
+
 ### From Source
 
 ```bash

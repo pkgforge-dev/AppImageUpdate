@@ -129,9 +129,17 @@ fn detect_arch() -> Result<&'static str> {
         Ok("x86_64")
     } else if cfg!(target_arch = "aarch64") {
         Ok("aarch64")
+    } else if cfg!(target_arch = "riscv64") {
+        Ok("riscv64")
+    } else if cfg!(target_arch = "loongarch64") {
+        Ok("loongarch64")
+    } else if cfg!(all(target_arch = "powerpc64", target_endian = "little")) {
+        Ok("ppc64le")
+    } else if cfg!(target_arch = "powerpc64") {
+        Ok("ppc64")
     } else {
         Err(Error::AppImage(
-            "--self-update only supports x86_64 and aarch64".into(),
+            "--self-update has no binary release for this architecture".into(),
         ))
     }
 }
