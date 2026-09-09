@@ -1,12 +1,22 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use zsync_rs::{ControlFile, ZsyncAssembly};
 
 use crate::appimage::{AppImage, AppImageType};
 use crate::error::{Error, Result};
 use crate::update_info::UpdateInfo;
+
+/// Maps an assembly failure, keeping a caller-requested abort distinct from a
+/// genuine error so it is not reported as a failed update.
+fn zsync_error(context: &str, e: zsync_rs::AssemblyError) -> Error {
+    match e {
+        zsync_rs::AssemblyError::Aborted => Error::Aborted,
+        other => Error::Zsync(format!("{}: {}", context, other)),
+    }
+}
 
 struct UpdateContext {
     source_size: u64,
@@ -50,6 +60,7 @@ pub struct Updater {
     output_dir: PathBuf,
     overwrite: bool,
     progress_callback: Option<Arc<dyn Fn(u64, u64) + Send + Sync>>,
+    abort_flag: Option<Arc<AtomicBool>>,
 }
 
 impl Updater {
@@ -67,6 +78,7 @@ impl Updater {
             output_dir,
             overwrite: false,
             progress_callback: None,
+            abort_flag: None,
         })
     }
 
@@ -83,6 +95,7 @@ impl Updater {
             output_dir,
             overwrite: false,
             progress_callback: None,
+            abort_flag: None,
         })
     }
 
@@ -104,6 +117,22 @@ impl Updater {
         }
         self.update_info = self.update_info.with_target_tag(tag);
         Ok(self)
+    }
+
+    /// Sets a flag polled during hashing, block scanning and downloading.
+    ///
+    /// Raising it makes the running operation stop at the next chunk and fail
+    /// with [`Error::Aborted`], so a cancelled update does not have to run to
+    /// completion.
+    pub fn abort_flag(mut self, flag: Arc<AtomicBool>) -> Self {
+        self.abort_flag = Some(flag);
+        self
+    }
+
+    fn aborted(&self) -> bool {
+        self.abort_flag
+            .as_ref()
+            .is_some_and(|f| f.load(Ordering::Relaxed))
     }
 
     pub fn progress_callback<F>(mut self, callback: F) -> Self
@@ -135,11 +164,25 @@ impl Updater {
     }
 
     fn verify_existing_file(&self, path: &Path, expected_sha1: &str) -> Result<bool> {
+        use std::io::Read;
+
         use sha1::{Digest, Sha1};
 
         let mut file = fs::File::open(path)?;
         let mut hasher = Sha1::new();
-        std::io::copy(&mut file, &mut hasher)?;
+        // Hashed in chunks rather than with io::copy so an abort is noticed
+        // part way through a large AppImage.
+        let mut buf = vec![0u8; 1024 * 1024];
+        loop {
+            if self.aborted() {
+                return Err(Error::Aborted);
+            }
+            let read = file.read(&mut buf)?;
+            if read == 0 {
+                break;
+            }
+            hasher.update(&buf[..read]);
+        }
         let hash = hasher.finalize();
         let actual_sha1 = hex::encode(hash);
 
@@ -275,6 +318,10 @@ impl Updater {
         let mut assembly = ZsyncAssembly::from_url(zsync_url, output_path)
             .map_err(|e| Error::Zsync(format!("Failed to initialize zsync: {}", e)))?;
 
+        if let Some(ref flag) = self.abort_flag {
+            assembly.set_abort_flag(Arc::clone(flag));
+        }
+
         if let Some(ref callback) = self.progress_callback {
             let callback = callback.clone();
             assembly.set_progress_callback(move |done, total| callback(done, total));
@@ -282,16 +329,16 @@ impl Updater {
 
         let blocks_reused = assembly
             .submit_source_file(source_path)
-            .map_err(|e| Error::Zsync(format!("Failed to submit source file: {}", e)))?;
+            .map_err(|e| zsync_error("Failed to submit source file", e))?;
 
         let self_blocks = assembly
             .submit_self_referential()
-            .map_err(|e| Error::Zsync(format!("Self-referential scan failed: {}", e)))?;
+            .map_err(|e| zsync_error("Self-referential scan failed", e))?;
         let blocks_reused = blocks_reused.saturating_add(self_blocks);
 
         let blocks_downloaded = assembly
             .download_missing_blocks()
-            .map_err(|e| Error::Zsync(format!("Failed to download blocks: {}", e)))?;
+            .map_err(|e| zsync_error("Failed to download blocks", e))?;
 
         assembly
             .complete()

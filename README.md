@@ -15,6 +15,7 @@ A Rust implementation of AppImageUpdate - a tool for updating AppImages using ef
 - **Permission Preservation** - Maintains executable permissions from the original AppImage
 - **Skip Unnecessary Updates** - Automatically skips update if the target file already exists with the correct checksum
 - **In-Place Updates** - Updates to same filename preserve old version as `.old` backup
+- **Graphical Mode** - Built-in file picker and progress dialog, with no GTK or Qt runtime dependency
 
 ## Installation
 
@@ -78,6 +79,22 @@ Exit code 1 if any update available, 0 if all up to date.
 appimageupdate -d ./myapp.AppImage
 ```
 
+### Graphical Mode
+
+```bash
+appimageupdate -g
+```
+
+Asks whether to update individual AppImages or everything in a folder, opens the matching picker, then shows a progress dialog. Passing paths alongside `-g` skips the picker and updates them directly, so `appimageupdate -g ~/Applications/` goes straight to updating.
+
+The GUI also opens on its own when `appimageupdate` is run with no AppImage, no terminal attached and a display server available, which is what happens when it is double-clicked in a file manager. Cron jobs, systemd units and CI runners have no display server, so they keep getting the usage error instead.
+
+Cancel stops the update straight away, part way through a scan or download, and leaves the existing AppImage untouched.
+
+`-j`, `-d` and `-l` report through stdout and the exit code, so they stay on the command line even when combined with `-g`.
+
+The dialogs are drawn by [zenity-rs](https://github.com/QaidVoid/zenity-rs) directly on X11 or Wayland, so the binary stays self-contained. Build with `--no-default-features` to drop the GUI entirely.
+
 ### Options
 
 ```
@@ -92,6 +109,7 @@ Options:
   -u, --update-info <INFO> Override update information in the AppImage
       --output-dir <DIR>  Output directory for updated AppImages
   -d, --describe          Parse and describe AppImage and its update information
+  -g, --gui               Update through a graphical file picker and progress dialog
   -j, --check-for-update  Check for update (exit 1 if any available, 0 if not)
   -l, --list-releases     List available releases from the update source
   -t, --target-tag <TAG>  Install a specific version (e.g., for downgrade)
@@ -182,7 +200,7 @@ Advantages:
 Differences:
 - No GPG signature verification (not implemented)
 - No pling integration (not implemented)
-- No GUI (not implemented)
+- GUI draws its own dialogs instead of requiring Qt
 
 ## Library Usage
 

@@ -11,6 +11,9 @@ use clap::Parser;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 
+#[cfg(feature = "gui")]
+mod gui;
+
 #[derive(Parser)]
 #[command(name = "appimageupdate")]
 #[command(about = "AppImage companion tool taking care of updates for the commandline.", long_about = None)]
@@ -42,6 +45,10 @@ struct Cli {
 
     #[arg(long)]
     self_update: bool,
+
+    #[cfg(feature = "gui")]
+    #[arg(short = 'g', long)]
+    gui: bool,
 
     #[arg(short = 't', long, value_name = "TAG")]
     target_tag: Option<String>,
@@ -104,6 +111,11 @@ fn run(cli: Cli) -> Result<(), Error> {
     }
     if cli.self_update {
         return appimageupdate::self_update::run();
+    }
+
+    #[cfg(feature = "gui")]
+    if use_gui(&cli) {
+        return gui::run(&cli);
     }
 
     if cli.paths.is_empty() {
@@ -287,6 +299,36 @@ fn run(cli: Cli) -> Result<(), Error> {
     }
 
     Ok(())
+}
+
+/// Reports whether the graphical frontend should handle this invocation.
+///
+/// Beyond an explicit `--gui`, no AppImage, no terminal and a display server
+/// means the tool was launched from a file manager rather than a shell. The
+/// display check matters because cron jobs, systemd units and CI runners have
+/// no terminal either, and those should keep getting the usage error.
+#[cfg(feature = "gui")]
+fn use_gui(cli: &Cli) -> bool {
+    use std::io::IsTerminal;
+
+    // These report through stdout and the exit code, so they stay on the
+    // command line even alongside --gui, as the upstream GUI does for -j.
+    if cli.check_for_update || cli.describe || cli.list_releases {
+        return false;
+    }
+
+    if cli.gui {
+        return true;
+    }
+
+    let has_display =
+        std::env::var_os("WAYLAND_DISPLAY").is_some() || std::env::var_os("DISPLAY").is_some();
+
+    cli.paths.is_empty()
+        && has_display
+        && !std::io::stdin().is_terminal()
+        && !std::io::stdout().is_terminal()
+        && !std::io::stderr().is_terminal()
 }
 
 fn download_style() -> ProgressStyle {
