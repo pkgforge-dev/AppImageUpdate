@@ -1,4 +1,14 @@
 
+## [0.4.0](https://github.com/pkgforge-dev/AppImageUpdate/compare/0.3.2...0.4.0) - 2026-09-09
+
+### ⛰️  Features
+
+- Add a graphical mode ([#32](https://github.com/pkgforge-dev/AppImageUpdate/pull/32)) - ([999d5d6](https://github.com/pkgforge-dev/AppImageUpdate/commit/999d5d63065ce22ac08c50fcfc97a895ef24ccbb))
+
+### ⚙️ Miscellaneous Tasks
+
+- Build riscv64, loongarch64, and ppc64 releases ([#30](https://github.com/pkgforge-dev/AppImageUpdate/pull/30)) - ([7e1b1b3](https://github.com/pkgforge-dev/AppImageUpdate/commit/7e1b1b3611a76c23adaf83e61e1db6355fa0cb31))
+
 ## [0.3.2](https://github.com/pkgforge-dev/AppImageUpdate/compare/0.3.1...0.3.2) - 2026-04-25
 
 ### ⛰️  Features
