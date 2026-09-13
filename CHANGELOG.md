@@ -1,4 +1,10 @@
 
+## [0.4.2](https://github.com/pkgforge-dev/AppImageUpdate/compare/0.4.1...0.4.2) - 2026-09-13
+
+### ⚙️ Miscellaneous Tasks
+
+- Pin nightly and actions, allow rebuilding a tag - ([2305d8f](https://github.com/pkgforge-dev/AppImageUpdate/commit/2305d8fbc05d9a609bd6955dda18f49c7b554cdf))
+
 ## [0.4.1](https://github.com/pkgforge-dev/AppImageUpdate/compare/0.4.0...0.4.1) - 2026-09-13
 
 ### ⚡ Performance
