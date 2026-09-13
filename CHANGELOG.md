@@ -1,4 +1,14 @@
 
+## [0.4.1](https://github.com/pkgforge-dev/AppImageUpdate/compare/0.4.0...0.4.1) - 2026-09-13
+
+### ⚡ Performance
+
+- Fetch the zsync control file once per update - ([367295f](https://github.com/pkgforge-dev/AppImageUpdate/commit/367295f6a93ccaac28900ff6d9f3a3ee752a18f9))
+
+### ⚙️ Miscellaneous Tasks
+
+- Bump zsync-rs to 0.2.1 for connect timeouts - ([1703018](https://github.com/pkgforge-dev/AppImageUpdate/commit/1703018b662183abb1e0166836768219cde1714b))
+
 ## [0.4.0](https://github.com/pkgforge-dev/AppImageUpdate/compare/0.3.2...0.4.0) - 2026-09-09
 
 ### ⛰️  Features
