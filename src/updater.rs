@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, OnceLock};
 
 use zsync_rs::{ControlFile, ZsyncAssembly};
 
@@ -16,6 +16,17 @@ fn zsync_error(context: &str, e: zsync_rs::AssemblyError) -> Error {
         zsync_rs::AssemblyError::Aborted => Error::Aborted,
         other => Error::Zsync(format!("{}: {}", context, other)),
     }
+}
+
+/// The directory a control file was served from.
+///
+/// A control file may name its target relatively, and zsync resolves that
+/// against the directory the control file itself came from.
+fn base_url_of(control_url: &str) -> String {
+    control_url
+        .rfind('/')
+        .map(|i| control_url[..=i].to_string())
+        .unwrap_or_default()
 }
 
 struct UpdateContext {
@@ -61,6 +72,7 @@ pub struct Updater {
     overwrite: bool,
     progress_callback: Option<Arc<dyn Fn(u64, u64) + Send + Sync>>,
     abort_flag: Option<Arc<AtomicBool>>,
+    control: OnceLock<(ControlFile, String)>,
 }
 
 impl Updater {
@@ -79,6 +91,7 @@ impl Updater {
             overwrite: false,
             progress_callback: None,
             abort_flag: None,
+            control: OnceLock::new(),
         })
     }
 
@@ -96,6 +109,7 @@ impl Updater {
             overwrite: false,
             progress_callback: None,
             abort_flag: None,
+            control: OnceLock::new(),
         })
     }
 
@@ -143,13 +157,28 @@ impl Updater {
         self
     }
 
-    fn fetch_control_file(&self) -> Result<(ControlFile, String)> {
+    /// The control file for this update and the URL it came from, fetched at
+    /// most once.
+    ///
+    /// Resolving the target, deciding whether an update is needed and
+    /// assembling it all consult the control file. A mirror redirector can
+    /// send each request to a different host, so fetching once both keeps the
+    /// whole update on a single view of the target and spares three round
+    /// trips that each risk landing on a mirror that is down.
+    fn control(&self) -> Result<&(ControlFile, String)> {
+        if let Some(cached) = self.control.get() {
+            return Ok(cached);
+        }
         let zsync_url = self.update_info.zsync_url()?;
-        let http = zsync_rs::HttpClient::new();
-        let control = http
+        let control = zsync_rs::HttpClient::new()
             .fetch_control_file(&zsync_url)
-            .map_err(|e| Error::Zsync(format!("Failed to fetch control file: {}", e)))?;
-        Ok((control, zsync_url))
+            .map_err(|e| {
+                Error::Zsync(format!(
+                    "Failed to fetch control file from {}: {}",
+                    zsync_url, e
+                ))
+            })?;
+        Ok(self.control.get_or_init(|| (control, zsync_url)))
     }
 
     fn resolve_output_path(&self, control: &ControlFile) -> Result<PathBuf> {
@@ -190,7 +219,7 @@ impl Updater {
     }
 
     pub fn check_for_update(&self) -> Result<bool> {
-        let (control, _zsync_url) = self.fetch_control_file()?;
+        let (control, _zsync_url) = self.control()?;
 
         if let Some(ref expected_sha1) = control.sha1
             && self.verify_existing_file(self.appimage.path(), expected_sha1)?
@@ -232,14 +261,14 @@ impl Updater {
     }
 
     pub fn target_info(&self) -> Result<(PathBuf, u64)> {
-        let (control, _zsync_url) = self.fetch_control_file()?;
-        let output_path = self.resolve_output_path(&control)?;
+        let (control, _zsync_url) = self.control()?;
+        let output_path = self.resolve_output_path(control)?;
         Ok((output_path, control.length))
     }
 
     pub fn perform_update(&self) -> Result<(PathBuf, UpdateStats)> {
-        let (control, zsync_url) = self.fetch_control_file()?;
-        let output_path = self.resolve_output_path(&control)?;
+        let (control, zsync_url) = self.control()?;
+        let output_path = self.resolve_output_path(control)?;
 
         if output_path.exists() {
             if let Some(ref expected_sha1) = control.sha1
@@ -292,7 +321,7 @@ impl Updater {
             (source_path.to_path_buf(), None)
         };
 
-        let result = self.do_update(&actual_source_path, &output_path, &zsync_url, &ctx);
+        let result = self.do_update(&actual_source_path, &output_path, control, zsync_url, &ctx);
 
         match result {
             Ok(mut stats) => {
@@ -312,11 +341,14 @@ impl Updater {
         &self,
         source_path: &Path,
         output_path: &Path,
+        control: &ControlFile,
         zsync_url: &str,
         ctx: &UpdateContext,
     ) -> Result<UpdateStats> {
-        let mut assembly = ZsyncAssembly::from_url(zsync_url, output_path)
-            .map_err(|e| Error::Zsync(format!("Failed to initialize zsync: {}", e)))?;
+        let base_url = base_url_of(zsync_url);
+        let mut assembly =
+            ZsyncAssembly::with_base_url(control.clone(), output_path, Some(&base_url))
+                .map_err(|e| Error::Zsync(format!("Failed to initialize zsync: {}", e)))?;
 
         if let Some(ref flag) = self.abort_flag {
             assembly.set_abort_flag(Arc::clone(flag));
@@ -358,5 +390,22 @@ impl Updater {
             block_size: ctx.block_size,
             backup_path: None,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn base_url_is_the_directory_holding_the_control_file() {
+        assert_eq!(
+            base_url_of("https://example.com/path/app.AppImage.zsync"),
+            "https://example.com/path/"
+        );
+        assert_eq!(
+            base_url_of("https://example.com/app.AppImage.zsync"),
+            "https://example.com/"
+        );
     }
 }
