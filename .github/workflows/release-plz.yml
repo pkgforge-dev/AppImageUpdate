@@ -5,6 +5,11 @@ on:
     branches:
       - main
 
+env:
+  # Kept in step with the release workflow so a release builds and publishes
+  # on one toolchain. See .github/workflows/release.yml for why it is pinned.
+  RUST_NIGHTLY: nightly-2026-09-09
+
 jobs:
   release-plz-release:
     name: Release-plz release
@@ -13,13 +18,15 @@ jobs:
       contents: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@nightly
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        with:
+          toolchain: ${{ env.RUST_NIGHTLY }}
       - name: Run release-plz
-        uses: release-plz/action@v0.5
+        uses: release-plz/action@a80d79efe0a195618acb02a4089d55fe74d2505f # v0.5.136
         with:
           command: release
         env:
@@ -37,14 +44,16 @@ jobs:
       cancel-in-progress: false
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           token: ${{ secrets.RELEASE_PLZ_TOKEN }}
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@nightly
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        with:
+          toolchain: ${{ env.RUST_NIGHTLY }}
       - name: Run release-plz
-        uses: release-plz/action@v0.5
+        uses: release-plz/action@a80d79efe0a195618acb02a4089d55fe74d2505f # v0.5.136
         with:
           command: release-pr
         env:
